@@ -7,7 +7,7 @@ namespace IPK_L4_Scanner.Packet;
 
 public class TcpHeader
 {
-    public IpHeader ipHeader;
+    public IpHeader IpHeader {get;set;}
     public ushort SourcePort { get; set; }
     public ushort DestinationPort { get; set; }
     public uint SequenceNumber { get; set; }
@@ -19,9 +19,8 @@ public class TcpHeader
     public ushort UrgentPointer { get; set; }
     public byte[] Options { get; set; } = Array.Empty<byte>();
 
-    public TcpHeader(IpHeader ipHeader, ushort sourcePort, ushort destinationPort)
+    public TcpHeader(ushort sourcePort, ushort destinationPort)
     {
-        this.ipHeader = ipHeader;
         this.SourcePort = sourcePort;
         this.DestinationPort = destinationPort;
         this.SequenceNumber = 0;
@@ -59,7 +58,7 @@ public class TcpHeader
         }
 
         // Get pseudo-header and combine with TCP header + payload
-        var pseudoHeader = ipHeader.GetPseudoHeader(ipHeader.HeaderLength);
+        var pseudoHeader = IpHeader.GetPseudoHeader(IpHeader.HeaderLength);
         var segmentLength = tcpHeaderBytes.Length + (payload?.Length ?? 0);
         
         using (var ms = new MemoryStream())
@@ -97,8 +96,85 @@ public class TcpHeader
 
         return (ushort)~sum;
     }
-}
 
+
+
+  public byte[] ToBytes()
+    {
+        UpdateDataOffset();  // Ensure DataOffset matches options length
+        
+        using var ms = new MemoryStream();
+        using var writer = new BinaryWriter(ms);
+        
+        writer.Write(IPAddress.HostToNetworkOrder((short)SourcePort));
+        writer.Write(IPAddress.HostToNetworkOrder((short)DestinationPort));
+        writer.Write(IPAddress.HostToNetworkOrder((int)SequenceNumber));
+        writer.Write(IPAddress.HostToNetworkOrder((int)AcknowledgmentNumber));
+        
+        // Combine DataOffset (4 bits) and Flags (8 bits)
+        ushort offsetFlags = (ushort)((DataOffset << 12) | (Flags << 8));
+        writer.Write(IPAddress.HostToNetworkOrder((short)offsetFlags));
+        
+        writer.Write(IPAddress.HostToNetworkOrder((short)WindowSize));
+        writer.Write(IPAddress.HostToNetworkOrder((short)Checksum));
+        writer.Write(IPAddress.HostToNetworkOrder((short)UrgentPointer));
+        
+        if (Options.Length > 0)
+            writer.Write(Options);
+
+        return ms.ToArray();
+    }
+
+    public static TcpHeader FromBytes(byte[] bytes)
+    {
+        if (bytes.Length < 20)
+            throw new ArgumentException("Invalid TCP header - too short");
+
+        using var ms = new MemoryStream(bytes);
+        using var reader = new BinaryReader(ms);
+        
+        var header = new TcpHeader(
+            sourcePort: (ushort)IPAddress.NetworkToHostOrder(reader.ReadInt16()),
+            destinationPort: (ushort)IPAddress.NetworkToHostOrder(reader.ReadInt16()))
+        {
+            SequenceNumber = (uint)IPAddress.NetworkToHostOrder(reader.ReadInt32()),
+            AcknowledgmentNumber = (uint)IPAddress.NetworkToHostOrder(reader.ReadInt32())
+        };
+
+        // Parse DataOffset and Flags
+        var offsetFlags = (ushort)IPAddress.NetworkToHostOrder(reader.ReadInt16());
+        header.DataOffset = (byte)((offsetFlags >> 12) & 0x0F);
+        header.Flags = (byte)((offsetFlags >> 8) & 0xFF);
+
+        header.WindowSize = (ushort)IPAddress.NetworkToHostOrder(reader.ReadInt16());
+        header.Checksum = (ushort)IPAddress.NetworkToHostOrder(reader.ReadInt16());
+        header.UrgentPointer = (ushort)IPAddress.NetworkToHostOrder(reader.ReadInt16());
+
+        // Read options if present
+        var headerLength = header.DataOffset * 4;
+        if (headerLength < 20)
+            throw new ArgumentException("Invalid TCP header length");
+        
+        var optionsLength = headerLength - 20;
+        if (optionsLength > 0)
+        {
+            header.Options = reader.ReadBytes(optionsLength);
+            if (header.Options.Length != optionsLength)
+                throw new ArgumentException("Incomplete TCP options");
+        }
+
+        return header;
+    }
+
+    private void UpdateDataOffset()
+    {
+        var headerLength = 20 + Options.Length;
+        if (headerLength % 4 != 0)
+            throw new InvalidOperationException("TCP header length must be multiple of 4 bytes");
+        
+        DataOffset = (byte)(headerLength / 4);
+    }
+}
 public enum TcpFlags
 {
     FIN = 0x01,

@@ -123,4 +123,80 @@ public class IpHeader
 
         return (ushort)~sum;
     }
+
+      public byte[] ToBytes()
+    {
+        if (Version == (byte)IPVersion.IPv4)
+            return GetIPv4Bytes();
+        
+        if (Version == (byte)IPVersion.IPv6)
+            return GetIPv6Bytes();
+        
+        throw new NotSupportedException($"IP version {Version} not supported");
+    }
+
+    // Add to existing IpHeader class:
+    public static IpHeader FromBytes(byte[] data)
+    {
+        byte version = (byte)(data[0] >> 4);
+        if (version == (byte)IPVersion.IPv4)
+        {
+            return new IpHeader(
+                sourceIp: new IPAddress(BitConverter.ToUInt32(data, 12)),
+                destinationIp: new IPAddress(BitConverter.ToUInt32(data, 16)))
+            {
+                Version = version,
+                HeaderLength = (byte)((data[0] & 0x0F) * 4),
+                Protocol = data[9],
+                TotalLength = (ushort)IPAddress.NetworkToHostOrder(BitConverter.ToInt16(data, 2))
+            };
+        }
+        throw new NotImplementedException("IPv6 not implemented");
+    }
+
+    private byte[] GetIPv4Bytes()
+    {
+        byte[] header = new byte[HeaderLength];
+        using (var ms = new MemoryStream(header))
+        using (var writer = new BinaryWriter(ms))
+        {
+            // Version (4 bits) + IHL (4 bits)
+            byte versionIhl = (byte)((Version << 4) | (HeaderLength / 4));
+            writer.Write(versionIhl);
+            
+            writer.Write(TypeOfService);
+            writer.Write(IPAddress.HostToNetworkOrder((short)TotalLength));
+            writer.Write(IPAddress.HostToNetworkOrder((short)IdentificationNumber));
+            
+            // Flags (3 bits) + Fragment Offset (13 bits)
+            writer.Write(IPAddress.HostToNetworkOrder((short)FragmentOffset));
+            
+            writer.Write(TimeToLive);
+            writer.Write(Protocol);
+            writer.Write(Checksum);
+            writer.Write(SourceIp.GetAddressBytes());
+            writer.Write(DestinationIp.GetAddressBytes());
+        }
+        return header;
+    }
+
+    private byte[] GetIPv6Bytes()
+    {
+        byte[] header = new byte[HeaderLength];
+        using (var ms = new MemoryStream(header))
+        using (var writer = new BinaryWriter(ms))
+        {
+            // Version (4 bits) | Traffic Class (8 bits) | Flow Label (20 bits)
+            uint versionClassFlow = (uint)(Version << 28) | (uint)(TypeOfService << 20);
+            writer.Write(IPAddress.HostToNetworkOrder((int)versionClassFlow));
+            
+            // Payload Length (TCP/UDP header + data)
+            writer.Write(IPAddress.HostToNetworkOrder((ushort)(TotalLength - HeaderLength)));
+            writer.Write(Protocol);  // Next Header
+            writer.Write(TimeToLive); // Hop Limit
+            writer.Write(SourceIp.GetAddressBytes());
+            writer.Write(DestinationIp.GetAddressBytes());
+        }
+        return header;
+    }
 }
