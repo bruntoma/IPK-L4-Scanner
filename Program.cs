@@ -5,15 +5,19 @@ namespace IPK_L4_Scanner;
 
 class Program
 {
-    static async Task Main(string[] args)
+    static void Main(string[] args)
     {
-        Scanner scanner = new Scanner("enp0s3", IPAddress.Parse("8.8.8.8"), ScannerProtocol.TCP);
+        Scanner scanner = new Scanner("enp0s3", IPAddress.Parse("8.8.8.8"), ScannerProtocol.TCP, 15000, 0);
         scanner.PrepareSocket();
 
-        for (int i = 0; i < 100; i++)
+        for (int i = 52; i < 54; i++)
         {
-            var result = scanner.ScanPort(50);
-            Console.WriteLine(result.PortState);
+            var result = scanner.ScanPort(i);
+
+            //if (result.PortState == PortState.Open)
+            //{
+                Console.WriteLine(result.Port + ", " + result.PortState);
+            //}
         }
         Console.WriteLine("done");
     }
