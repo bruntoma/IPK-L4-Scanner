@@ -32,7 +32,7 @@ class Scanner : IDisposable
 
     public Scanner(string interfaceName, IPAddress destinationIp, ScannerProtocol scannerType, int timeout = 5000, int delayBetweenScans = 0)
     {
-        var ip = GetIpOfInterface(interfaceName, destinationIp.AddressFamily) ?? throw new Exception($"Could not find IPAddress of netowrk interface ({interfaceName})");
+        var ip = GetIpOfInterface(interfaceName, destinationIp.AddressFamily) ?? throw new Exception($"Could not find IPAddress of network interface ({interfaceName})");
         this.sourceEndPoint = new IPEndPoint(ip, SOURCE_PORT);
 
     

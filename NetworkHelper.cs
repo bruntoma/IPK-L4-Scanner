@@ -14,7 +14,7 @@ static class NetworkExtensions
         .Where(i => i.Name == interfaceName)
         .SelectMany(i => i.GetIPProperties().UnicastAddresses)
         .Select(a => a.Address)
-        .Where(addr => addr.IsIPv6LinkLocal)
+        .Where(addr => addressFamily == AddressFamily.InterNetwork || (addressFamily == AddressFamily.InterNetworkV6 && addr.IsIPv6LinkLocal))
         .FirstOrDefault(a => a.AddressFamily == addressFamily);
     }
 }
