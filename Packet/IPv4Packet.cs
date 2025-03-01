@@ -10,15 +10,15 @@ public class IPv4Packet : IPPacket
 {
     public IPv4Packet(IPAddress source, IPAddress destination, ProtocolType protocolType) : base(source, destination, protocolType)
     {
-        this.Bytes = new byte[20];
+        this.Bytes = new byte[DEFAULT_IPv4_Length];
         this.Bytes[0] = 0x45; // Version and IHL
         this.Bytes[1] = 0x00; // DSCP/ECN
-        this.Bytes[2] = 0x00; // Total length (to be calculated)
-        this.Bytes[3] = 0x28; // Total length (to be calculated)
+        this.Bytes[2] = 0x00; // Total length - 40
+        this.Bytes[3] = 0x28; 
         this.Bytes[4] = 0x00; // Identification
-        this.Bytes[5] = 0x00; // Identification
+        this.Bytes[5] = 0x00; 
         this.Bytes[6] = 0x40; // Flags and fragment offset
-        this.Bytes[7] = 0x00; // Flags and fragment offset
+        this.Bytes[7] = 0x00; 
         this.Bytes[8] = 0x40; // TTL (64)
         this.Bytes[9] = (byte)protocolType; // Protocol
 

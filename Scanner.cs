@@ -35,11 +35,23 @@ class Scanner : IDisposable
         var ip = GetIpOfInterface(interfaceName, destinationIp.AddressFamily) ?? throw new Exception($"Could not find IPAddress of netowrk interface ({interfaceName})");
         this.sourceEndPoint = new IPEndPoint(ip, SOURCE_PORT);
 
-        this.sendingSocket = new Socket(destinationIp.AddressFamily, SocketType.Raw, System.Net.Sockets.ProtocolType.Tcp);
-        this.sendingSocket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.HeaderIncluded, true);
+    
+        //this.sendingSocket = new Socket(destinationIp.AddressFamily, SocketType.Raw, System.Net.Sockets.ProtocolType.Raw);
+        this.sendingSocket = new Socket(destinationIp.AddressFamily, SocketType.Raw, System.Net.Sockets.ProtocolType.Raw);
+        this.receivingSocket = new Socket(destinationIp.AddressFamily, SocketType.Raw, System.Net.Sockets.ProtocolType.Tcp) { ReceiveTimeout = timeout};
 
-        this.receivingSocket = new Socket(destinationIp.AddressFamily, SocketType.Raw, System.Net.Sockets.ProtocolType.Tcp);
-        this.receivingSocket.ReceiveTimeout = timeout;
+        if (destinationIp.AddressFamily == AddressFamily.InterNetwork)
+        {
+            this.sendingSocket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.HeaderIncluded, true);
+
+        }
+        else
+        {
+
+        }
+
+        this.receivingSocket.Bind(new IPEndPoint(sourceEndPoint.Address, 0));
+
 
         this.destinationIp = destinationIp;
         this.scannerType = scannerType;
@@ -48,7 +60,6 @@ class Scanner : IDisposable
         this.timeout = timeout;
         this.delayBetweenScans = delayBetweenScans;
 
-        this.receivingSocket.Bind(sourceEndPoint);
     }
 
     public void PrepareSocket()
@@ -66,16 +77,17 @@ class Scanner : IDisposable
         {
             sendingSocket.SendTo(packetFactory.CreatePacket(ScannerProtocol.TCP, sourceEndPoint, destinationEndPoint), destinationEndPoint);
 
-            bool valid = false;
-            while(!valid)
+            EndPoint fromEndpoint = new IPEndPoint(destinationEndPoint.Address, port);
+            TcpPacket? tcpHeader = null;
+            while(tcpHeader == null)
             {
-                int bytesReceived = receivingSocket.Receive(receiveBytes);
-                valid = IsValidResponse(receiveBytes, destinationEndPoint);
+                int bytesReceived = receivingSocket.ReceiveFrom(receiveBytes, SocketFlags.None, ref fromEndpoint);
+                tcpHeader = GetTcpPacket(receiveBytes, (IPEndPoint)fromEndpoint);
             }
             
-            if (valid)
+            if (tcpHeader != null)
             {
-                return GetScanResultFromResponse(receiveBytes);
+                return GetScanResultFromResponse(receiveBytes, tcpHeader);
             }
             else
             {
@@ -100,53 +112,62 @@ class Scanner : IDisposable
         else
             return ScanPort(port, true);
     }
-    private bool IsValidResponse(byte[] responseBytes, IPEndPoint destinationEndPoint)
+    private TcpPacket? GetTcpPacket(byte[] responseBytes, IPEndPoint destinationEndPoint)
     {
         try
         {
-            var ipHeader = IPv4Packet.FromBytes(responseBytes);
-            if (ipHeader == null) return false;
-
-            // Verify response is from the target IP
-            if (!ipHeader.SourceIp.Equals(destinationEndPoint.Address))
-                return false;
-
+            TcpPacket? tcpHeader;
             if (scannerType == ScannerProtocol.TCP)
             {
-                var tcpHeader = TcpPacket.FromBytes(responseBytes, ipHeader);
-                if (tcpHeader == null) return false;
+                IPPacket? ipHeader;
+                if (destinationEndPoint.Address.AddressFamily == AddressFamily.InterNetwork)
+                {
+                    ipHeader = IPv4Packet.FromBytes(responseBytes);
+                    if (ipHeader == null || ipHeader.SourceIp == null || ipHeader.DestinationIp == null) return null;
+
+                    // Verify response is from the target IP
+                    if (!ipHeader.SourceIp.Equals(destinationEndPoint.Address)) return null;
+
+                    tcpHeader = TcpPacket.FromBytes(responseBytes, ipHeader.SourceIp, ipHeader.DestinationIp);
+
+                } 
+                else
+                {
+                    tcpHeader = TcpPacket.FromBytes(responseBytes, this.sourceEndPoint.Address, this.destinationIp);
+                }
+           
+
+                if (tcpHeader == null) return null;
+            
 
                 // Check destination port matches our source port
                 if (tcpHeader.DestinationPort != SOURCE_PORT)
-                    return false;
+                    return null;
 
                 // Check source port matches the scanned port
                 if (tcpHeader.SourcePort != lastScannedPort)
-                    return false;
+                    return null;
 
-                return true;
+                return tcpHeader;
             }
             else if (scannerType == ScannerProtocol.UDP)
             {
                 throw new NotImplementedException("UDP not implemented");
             }
 
-            return false;
+            return null;
         }
         catch
         {
-            return false;
+            throw;
         }
     }
 
-    private ScanResult GetScanResultFromResponse(byte[] response)
+    private ScanResult GetScanResultFromResponse(byte[] response, TcpPacket tcpHeader)
     {
-        var ipHeader = IPv4Packet.FromBytes(response) ?? throw new Exception("Invalid ip header");
 
         if (this.scannerType == ScannerProtocol.TCP)
         {
-            var tcpHeader = TcpPacket.FromBytes(response, ipHeader) ?? throw new Exception("Invalid tcp header");
-
             if (tcpHeader.IsReset())
             {
                 return new ScanResult(tcpHeader.SourcePort, PortState.Closed);

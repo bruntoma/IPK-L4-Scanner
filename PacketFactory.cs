@@ -9,10 +9,12 @@ class PacketFactory
     public byte[] CreatePacket(ScannerProtocol protocolType, IPEndPoint sourceEndPoint, IPEndPoint destinationEndPoint)
     {
         // Construct the IP header.
+        if (sourceEndPoint.AddressFamily == AddressFamily.InterNetwork)
+        {
             var ipHeader = new IPv4Packet(sourceEndPoint.Address, destinationEndPoint.Address, ProtocolType.Tcp);
 
             // Construct the TCP header.
-            var tcpHeader = new TcpPacket(ipHeader, (ushort)sourceEndPoint.Port, (ushort)destinationEndPoint.Port, TcpFlags.SYN);
+            var tcpHeader = new TcpPacket(ipHeader.SourceIp, ipHeader.DestinationIp, (ushort)sourceEndPoint.Port, (ushort)destinationEndPoint.Port, TcpFlags.SYN);
 
             if (ipHeader.Bytes == null || tcpHeader.Bytes == null) { throw new Exception("Packet creation failed"); }
 
@@ -20,6 +22,18 @@ class PacketFactory
             Array.Copy(ipHeader.Bytes, 0, packet, 0, 20);
             Array.Copy(tcpHeader.Bytes, 0, packet, 20, 20);
             return packet;
+        }
+        else
+        {
+            var packet = new PacketDotNet.IPv6Packet(sourceEndPoint.Address, destinationEndPoint.Address);
+            var tcp = new PacketDotNet.TcpPacket((ushort)sourceEndPoint.Port, (ushort)destinationEndPoint.Port);
+            tcp.Synchronize = true;
+            packet.PayloadPacket = tcp;
+
+            tcp.UpdateTcpChecksum();
+
+            return packet.Bytes;
+        }
 
         // var ipHeader = new IpHeader(sourceEndPoint.Address, destinationEndPoint.Address){
         //     TotalLength = (ushort)(20 + 20), // IP header + TCP header

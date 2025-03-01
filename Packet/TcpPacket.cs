@@ -22,16 +22,18 @@ public class TcpPacket : Packet
     public ushort DestinationPort { get; private set; }
     public ushort Checksum { get; private set; }
 
-    public IPPacket IpPacket {get; private set; }
+    public IPAddress SourceIp {get; private set; }
+    public IPAddress DestinationIp {get; private set; }
 
     public TcpFlags Flags {get; private set;} = 0;
 
-    public TcpPacket(IPPacket packet, ushort sourcePort, ushort destinationPort, TcpFlags flags = 0)
+    public TcpPacket(IPAddress sourceIp, IPAddress destinationIp, ushort sourcePort, ushort destinationPort, TcpFlags flags = 0)
     {
-        this.Flags = flags;
+        this.SourceIp = sourceIp;
+        this.DestinationIp = destinationIp;
         this.SourcePort = sourcePort;
         this.DestinationPort = destinationPort;
-        this.IpPacket = packet;
+        this.Flags = flags;
 
         this.Bytes = new byte[20];
 
@@ -71,7 +73,7 @@ public class TcpPacket : Packet
         this.Bytes[19] = 0x00;
 
          // Calculate checksum.
-        byte[] pseudoHeader = CreatePseudoHeader(IpPacket.SourceIp, IpPacket.DestinationIp, 20);
+        byte[] pseudoHeader = CreatePseudoHeader(SourceIp, DestinationIp, 20);
         byte[] checksumData = new byte[pseudoHeader.Length + this.Bytes.Length];
         Array.Copy(pseudoHeader, 0, checksumData, 0, pseudoHeader.Length);
         Array.Copy(this.Bytes, 0, checksumData, pseudoHeader.Length, this.Bytes.Length);
@@ -92,20 +94,20 @@ public class TcpPacket : Packet
         return header;
     }
 
-    public static TcpPacket? FromBytes(byte[] packet, IPPacket ipPacket)
+    public static TcpPacket? FromBytes(byte[] packet, IPAddress sourceIp, IPAddress destinationIp)
     {
         if (packet.Length < 40)
         {
             Console.WriteLine("Packet too short to parse TCP header.");
             return null;
         }
-
-        int tcpHeaderOffset = 20; // ip header length
+        
+        int tcpHeaderOffset = (sourceIp.AddressFamily == AddressFamily.InterNetwork) ? (packet[0] & 0x0F) * 4 : 0; // Ip header length (when receiving ipv6, we receive only the tcp header)
         ushort sourcePort = (ushort)((packet[tcpHeaderOffset] << 8) | packet[tcpHeaderOffset + 1]);
         ushort destinationPort = (ushort)((packet[tcpHeaderOffset + 2] << 8) | packet[tcpHeaderOffset + 3]);
         TcpFlags flags = (TcpFlags)packet[tcpHeaderOffset + 13];
 
-        return new TcpPacket(ipPacket, sourcePort, destinationPort, flags);
+        return new TcpPacket(sourceIp, destinationIp, sourcePort, destinationPort, flags);
     }
 
     public bool IsAck()

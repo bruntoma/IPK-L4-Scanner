@@ -5,8 +5,8 @@ namespace IPK_L4_Scanner.Packet;
 
 public abstract class IPPacket : Packet 
 {
-    private const byte DEFAULT_IPv4_Length = 20;
-    private const byte DEFAULT_IPv6_Length = 40;
+    public const byte DEFAULT_IPv4_Length = 20;
+    public const byte DEFAULT_IPv6_Length = 40;
 
     public byte Protocol { get; init; }
     public ushort Checksum { get; init; }
