@@ -1,4 +1,4 @@
-namespace IPK_L4_Scanner.Packet;
+namespace IPK_L4_Scanner.Packets;
 
 
 public abstract class Packet {

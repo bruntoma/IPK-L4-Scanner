@@ -1,6 +1,6 @@
 using System.Net;
 using System.Net.Sockets;
-using IPK_L4_Scanner.Packet;
+using IPK_L4_Scanner.Packets;
 
 namespace IPK_L4_Scanner;
 

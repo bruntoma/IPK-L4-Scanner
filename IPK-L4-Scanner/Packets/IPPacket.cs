@@ -1,7 +1,7 @@
 using System.Net;
 using System.Net.Sockets;
 
-namespace IPK_L4_Scanner.Packet;
+namespace IPK_L4_Scanner.Packets;
 
 public abstract class IPPacket : Packet 
 {

@@ -1,49 +1,89 @@
-// private TcpPacket? GetTcpPacket(byte[] responseBytes, IPEndPoint destinationEndPoint)
-//     {
-//         try
-//         {
-//             TcpPacket? tcpHeader;
-//             if (scannerType == ScannerProtocol.TCP)
-//             {
-//                 IPPacket? ipHeader;
-//                 if (destinationEndPoint.Address.AddressFamily == AddressFamily.InterNetwork)
-//                 {
-//                     ipHeader = IPv4Packet.FromBytes(responseBytes);
-//                     if (ipHeader == null || ipHeader.SourceIp == null || ipHeader.DestinationIp == null) return null;
+using System.Net;
+using System.Net.Sockets;
+using IPK_L4_Scanner;
+using IPK_L4_Scanner.Packets;
 
-//                     // Verify response is from the target IP
-//                     if (!ipHeader.SourceIp.Equals(destinationEndPoint.Address)) return null;
+public class UdpScanner : BaseScanner
+{
 
-//                     tcpHeader = TcpPacket.FromBytes(responseBytes, ipHeader.SourceIp, ipHeader.DestinationIp);
+    protected int delayBetweenScans;
 
-//                 } 
-//                 else
-//                 {
-//                     tcpHeader = TcpPacket.FromBytes(responseBytes, this.sourceEndPoint.Address, this.destinationIp);
-//                 }
-           
+    public UdpScanner(string interfaceName, IPAddress destinationIp, int timeout = 5000, int delayBetweenScans = 1500) : base(interfaceName, destinationIp, new UdpPacketFactory(), timeout)
+    {
+        this.delayBetweenScans = delayBetweenScans;
+    }
 
-//                 if (tcpHeader == null) 
-//                     return null;
-            
+    public override ScanResult ScanPort(int port, bool retry = false)
+    {
+        var result = base.ScanPort(port, retry);
+        Thread.Sleep(delayBetweenScans);
+        return result;
+    }
 
-//                 if (tcpHeader.DestinationPort != SOURCE_PORT)
-//                     return null;
+    public override Socket CreateReceivingSocket()
+    {
+        var protocolType = (destinationIp.AddressFamily == AddressFamily.InterNetwork) ? ProtocolType.Icmp : ProtocolType.IcmpV6;
+        var receivingSocket = new Socket(destinationIp.AddressFamily, SocketType.Raw, protocolType) { ReceiveTimeout = timeout};
+        receivingSocket.Bind(new IPEndPoint(sourceEndPoint.Address, 0));
+        return receivingSocket;
+    } 
 
-//                 if (tcpHeader.SourcePort != lastScannedPort)
-//                     return null;
+    public override Socket CreateSendingSocket()
+    {
+        var sendingSocket = new Socket(destinationIp.AddressFamily, SocketType.Raw, ProtocolType.Raw);
+        if (destinationIp.AddressFamily == AddressFamily.InterNetwork)
+        {
+            sendingSocket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.HeaderIncluded, true);
+        }
+        return sendingSocket;
+    }
 
-//                 return tcpHeader;
-//             }
-//             else if (scannerType == ScannerProtocol.UDP)
-//             {
-//                 throw new NotImplementedException("UDP not implemented");
-//             }
+    protected override Packet? GetPacketFromBytes(byte[] responseBytes, IPEndPoint packetSourceEndpoint)
+    {
+            IcmpPacket? icmpPacket;
+            IPPacket? ipPacket;
+            if (packetSourceEndpoint.Address.AddressFamily == AddressFamily.InterNetwork)
+            {
+                ipPacket = IPv4Packet.FromBytes(responseBytes);
+                if (ipPacket == null || ipPacket.SourceIp == null || ipPacket.DestinationIp == null) return null;
 
-//             return null;
-//         }
-//         catch
-//         {
-//             throw;
-//         }
-//     }
+
+
+            } 
+            else
+            {
+            }
+
+
+            // Verify response is from the target IP
+            if (!this.destinationIp.Equals(packetSourceEndpoint.Address)) return null;
+
+            icmpPacket = IcmpPacket.FromBytes(responseBytes, this.sourceEndPoint.Address, this.destinationIp);
+            if (icmpPacket == null || icmpPacket.Code != 3 || icmpPacket.Type != 3)            
+                return null;
+
+
+            return icmpPacket;
+    }
+
+    protected override ScanResult GetScanResultFromResponse(byte[] response, Packet packet)
+    {
+        var icmpPacket = packet as IcmpPacket;
+        if (icmpPacket is null) { throw new NullReferenceException("Received packet is not a ICMP packet. Wrong packets should not be returned from GetPacketFromBytes");};
+
+        var originalUdpPacket = icmpPacket.GetOriginalUdpPacket();
+        if (originalUdpPacket == null)
+            throw new Exception("Extraction of original UDP packet from received ICMP header failed.");
+
+        if (icmpPacket.Type == 3)
+        {
+            return new ScanResult(originalUdpPacket.DestinationPort, PortState.Closed);
+        }
+        return new ScanResult(originalUdpPacket.DestinationPort, PortState.Open);
+    }
+
+    protected override ScanResult HandleTimeout(int port, bool retry)
+    {
+        return new ScanResult(port, PortState.Open);
+    }
+}

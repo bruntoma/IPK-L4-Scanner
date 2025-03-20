@@ -8,7 +8,7 @@ class Program
     static void Main(string[] args)
     {
         //fe80::da44:89ff:fe62:1ffc%enp0s3"
-        BaseScanner scanner = new TcpScanner("enp0s3", IPAddress.Parse("10.0.0.138"), 1000);
+        BaseScanner scanner = new UdpScanner("enp0s3", IPAddress.Parse("fe80::da44:89ff:fe62:1ffc%enp0s3"), 2000);
 
         scanner.CreateSockets();
 

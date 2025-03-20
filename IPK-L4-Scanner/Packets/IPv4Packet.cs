@@ -4,7 +4,7 @@ using System.Net.Sockets;
 using System.IO;
 using System.Linq;
 
-namespace IPK_L4_Scanner.Packet;
+namespace IPK_L4_Scanner.Packets;
 
 public class IPv4Packet : IPPacket
 {

@@ -1,14 +1,14 @@
 using System.Net;
 using System.Net.Sockets;
 using IPK_L4_Scanner;
-using IPK_L4_Scanner.Packet;
+using IPK_L4_Scanner.Packets;
 
 public class TcpScanner : BaseScanner
 {
-    private int timeout;
-    public TcpScanner(string interfaceName, IPAddress destinationIp, int timeout = 5000) : base(interfaceName, destinationIp, new PacketFactory())
+
+    public TcpScanner(string interfaceName, IPAddress destinationIp, int timeout = 5000) : base(interfaceName, destinationIp, new PacketFactory(), timeout)
     {
-        this.timeout = timeout;
+
     }
 
     public override Socket CreateSendingSocket()
@@ -27,9 +27,12 @@ public class TcpScanner : BaseScanner
         receivingSocket.Bind(new IPEndPoint(sourceEndPoint.Address, 0));
         return receivingSocket;
     } 
-      
-    protected override ScanResult GetScanResultFromResponse(byte[] response, TcpPacket tcpHeader)
+
+    protected override ScanResult GetScanResultFromResponse(byte[] response, Packet packet)
     {
+        var tcpHeader = packet as TcpPacket;
+        if (tcpHeader is null) { throw new NullReferenceException("Received packet is not a TCP packet. Wrong packets should not be returned from GetPacketFromBytes");};
+
         if (tcpHeader.IsReset())
         {
             return new ScanResult(tcpHeader.SourcePort, PortState.Closed);
@@ -44,8 +47,6 @@ public class TcpScanner : BaseScanner
 
     protected override TcpPacket? GetPacketFromBytes(byte[] responseBytes, IPEndPoint destinationEndPoint)
     {
-        try
-        {
             TcpPacket? tcpHeader;
             IPPacket? ipHeader;
             if (destinationEndPoint.Address.AddressFamily == AddressFamily.InterNetwork)
@@ -76,11 +77,6 @@ public class TcpScanner : BaseScanner
                 return null;
 
             return tcpHeader;
-        }
-        catch
-        {
-            throw;
-        }
     }
 
     protected override ScanResult HandleTimeout(int port, bool retry)
@@ -90,4 +86,6 @@ public class TcpScanner : BaseScanner
         else
             return ScanPort(port, true);    
     }
+
+
 }
