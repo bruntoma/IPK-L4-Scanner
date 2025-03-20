@@ -6,12 +6,10 @@ using IPK_L4_Scanner.Packet;
 public class TcpScanner : BaseScanner
 {
     private int timeout;
-    public TcpScanner(string interfaceName, IPAddress destinationIp, IHeaderFactory headerFactory, int timeout = 5000) : base(interfaceName, destinationIp, headerFactory)
+    public TcpScanner(string interfaceName, IPAddress destinationIp, int timeout = 5000) : base(interfaceName, destinationIp, new PacketFactory())
     {
         this.timeout = timeout;
-    }
-
-    
+    }    
 
     public override void CreateSockets()
     {

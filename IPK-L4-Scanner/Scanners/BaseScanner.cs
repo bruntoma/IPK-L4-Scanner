@@ -14,7 +14,7 @@ public abstract class BaseScanner : IDisposable
 
     protected Socket? sendingSocket = null;
     protected Socket? receivingSocket = null;
-    protected IHeaderFactory packetFactory;
+    protected IPacketFactory packetFactory;
     protected IPEndPoint sourceEndPoint;
     protected IPAddress destinationIp;
     protected string interfaceName;
@@ -22,7 +22,7 @@ public abstract class BaseScanner : IDisposable
 
     protected int lastScannedPort = 0;
 
-    protected BaseScanner(string interfaceName, IPAddress destinationIp, IHeaderFactory headerFactory)
+    protected BaseScanner(string interfaceName, IPAddress destinationIp, IPacketFactory headerFactory)
     {
         var ip = GetIpOfInterface(interfaceName, destinationIp.AddressFamily) ?? throw new Exception($"Could not find IPAddress of network interface ({interfaceName})");
         this.sourceEndPoint = new IPEndPoint(ip, SOURCE_PORT);

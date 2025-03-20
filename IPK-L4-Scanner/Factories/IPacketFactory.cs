@@ -1,6 +1,5 @@
 using System.Net;
 
-public interface IHeaderFactory{
+public interface IPacketFactory{
     public byte[] CreatePacket(IPEndPoint sourceEndPoint, IPEndPoint destinationEndPoint);
-
 }
