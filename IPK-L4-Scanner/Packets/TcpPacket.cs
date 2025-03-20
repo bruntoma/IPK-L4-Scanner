@@ -27,7 +27,9 @@ public class TcpPacket : Packet
 
     public TcpFlags Flags {get; private set;} = 0;
 
-    public TcpPacket(IPAddress sourceIp, IPAddress destinationIp, ushort sourcePort, ushort destinationPort, TcpFlags flags = 0)
+    private const byte DEFAULT_TCP_Length = 20;
+
+    public TcpPacket(IPAddress sourceIp, IPAddress destinationIp, ushort sourcePort, ushort destinationPort, TcpFlags flags = 0) : base(DEFAULT_TCP_Length)
     {
         this.SourceIp = sourceIp;
         this.DestinationIp = destinationIp;

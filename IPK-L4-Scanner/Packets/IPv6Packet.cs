@@ -6,12 +6,13 @@ namespace IPK_L4_Scanner.Packet
 {
     public class IPv6Packet : IPPacket
     {
+        private const byte DEFAULT_IPv6_Length = 40;
 
         //TODO: FIX comments
-        public IPv6Packet(IPAddress source, IPAddress destination, ProtocolType protocolType) 
-            : base(source, destination, protocolType)
+        public IPv6Packet(IPAddress source, IPAddress destination, ProtocolType protocolType) : base(source, destination, protocolType, DEFAULT_IPv6_Length)
         {
-            this.Bytes = new byte[DEFAULT_IPv6_Length];
+            this.Length = 40;
+            this.Bytes = new byte[Length];
             
             // 4 bits version and 4 bits of Traffic Class.
             this.Bytes[0] = 0x60; 

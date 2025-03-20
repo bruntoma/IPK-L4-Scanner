@@ -9,23 +9,25 @@ public class TcpScanner : BaseScanner
     public TcpScanner(string interfaceName, IPAddress destinationIp, int timeout = 5000) : base(interfaceName, destinationIp, new PacketFactory())
     {
         this.timeout = timeout;
-    }    
-
-    public override void CreateSockets()
-    {
-        //this.sendingSocket = new Socket(destinationIp.AddressFamily, SocketType.Raw, System.Net.Sockets.ProtocolType.Raw);
-        this.sendingSocket = new Socket(destinationIp.AddressFamily, SocketType.Raw, System.Net.Sockets.ProtocolType.Raw);
-        this.receivingSocket = new Socket(destinationIp.AddressFamily, SocketType.Raw, System.Net.Sockets.ProtocolType.Tcp) { ReceiveTimeout = timeout};
-
-        if (destinationIp.AddressFamily == AddressFamily.InterNetwork)
-        {
-            this.sendingSocket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.HeaderIncluded, true);
-        }
-
-
-        this.receivingSocket.Bind(new IPEndPoint(sourceEndPoint.Address, 0));
     }
 
+    public override Socket CreateSendingSocket()
+    {
+        var sendingSocket = new Socket(destinationIp.AddressFamily, SocketType.Raw, ProtocolType.Raw);
+        if (destinationIp.AddressFamily == AddressFamily.InterNetwork)
+        {
+            sendingSocket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.HeaderIncluded, true);
+        }
+        return sendingSocket;
+    }
+
+    public override Socket CreateReceivingSocket()
+    {
+        var receivingSocket = new Socket(destinationIp.AddressFamily, SocketType.Raw, ProtocolType.Tcp) { ReceiveTimeout = timeout};
+        receivingSocket.Bind(new IPEndPoint(sourceEndPoint.Address, 0));
+        return receivingSocket;
+    } 
+      
     protected override ScanResult GetScanResultFromResponse(byte[] response, TcpPacket tcpHeader)
     {
         if (tcpHeader.IsReset())

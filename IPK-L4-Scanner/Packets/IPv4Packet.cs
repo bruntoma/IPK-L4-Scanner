@@ -8,9 +8,12 @@ namespace IPK_L4_Scanner.Packet;
 
 public class IPv4Packet : IPPacket
 {
-    public IPv4Packet(IPAddress source, IPAddress destination, ProtocolType protocolType) : base(source, destination, protocolType)
+    private const byte DEFAULT_IPv4_Length = 20;
+
+    public IPv4Packet(IPAddress source, IPAddress destination, ProtocolType protocolType) : base(source, destination, protocolType, DEFAULT_IPv4_Length)
     {
-        this.Bytes = new byte[DEFAULT_IPv4_Length];
+        this.Length = 20;
+        this.Bytes = new byte[Length];
         this.Bytes[0] = 0x45; // Version and IHL
         this.Bytes[1] = 0x00; // DSCP/ECN
         this.Bytes[2] = 0x00; // Total length - 40

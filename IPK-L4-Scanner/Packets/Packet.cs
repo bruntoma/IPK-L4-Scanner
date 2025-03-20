@@ -2,7 +2,14 @@ namespace IPK_L4_Scanner.Packet;
 
 
 public abstract class Packet {
+    public byte Length {get; init;}
     public byte[]? Bytes { get; protected set; }  
+
+    public Packet(byte length)
+    {
+        this.Length = length;
+    }
+
     public ushort CalculateChecksum(byte[] buffer, int offset, int length)
     {
         uint checksum = 0;
@@ -21,4 +28,6 @@ public abstract class Packet {
         checksum += checksum >> 16;
         return (ushort)~checksum;
     }
+
+
 }

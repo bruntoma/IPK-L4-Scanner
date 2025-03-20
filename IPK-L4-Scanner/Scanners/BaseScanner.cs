@@ -32,7 +32,14 @@ public abstract class BaseScanner : IDisposable
         this.interfaceName = interfaceName;
     }
 
-    public abstract void CreateSockets();
+    public void CreateSockets(){
+        this.sendingSocket = CreateSendingSocket();
+        this.receivingSocket = CreateReceivingSocket();
+    }
+
+    public abstract Socket CreateSendingSocket();
+
+    public abstract Socket CreateReceivingSocket();
 
     protected abstract TcpPacket? GetPacketFromBytes(byte[] responseBytes, IPEndPoint destinationEndPoint);
 
