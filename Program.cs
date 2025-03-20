@@ -7,7 +7,8 @@ class Program
 {
     static void Main(string[] args)
     {
-        Scanner scanner = new Scanner("enp0s3", IPAddress.Parse("10.0.0.138"), ScannerProtocol.TCP, 5000, 0);
+        Scanner scanner = new Scanner("enp0s3", IPAddress.Parse("fe80::da44:89ff:fe62:1ffc%enp0s3"), ScannerProtocol.TCP, 1000, 0);
+
         scanner.PrepareSocket();
 
         for (int i = 52; i < 90; i++)

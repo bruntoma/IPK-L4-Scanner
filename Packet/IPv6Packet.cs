@@ -23,7 +23,7 @@ namespace IPK_L4_Scanner.Packet
             this.Bytes[2] = 0x00;
             this.Bytes[3] = 0x00;
             
-            // Payload Length 40
+            // Payload Length 20
             this.Bytes[4] = 0x00;
             this.Bytes[5] = 0x14;
             

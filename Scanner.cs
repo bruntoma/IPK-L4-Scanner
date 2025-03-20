@@ -43,12 +43,8 @@ class Scanner : IDisposable
         if (destinationIp.AddressFamily == AddressFamily.InterNetwork)
         {
             this.sendingSocket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.HeaderIncluded, true);
-
         }
-        else
-        {
 
-        }
 
         this.receivingSocket.Bind(new IPEndPoint(sourceEndPoint.Address, 0));
 
@@ -75,7 +71,8 @@ class Scanner : IDisposable
 
         try
         {
-            sendingSocket.SendTo(packetFactory.CreatePacket(ScannerProtocol.TCP, sourceEndPoint, destinationEndPoint), destinationEndPoint);
+            var packet = packetFactory.CreatePacket(ScannerProtocol.TCP, sourceEndPoint, destinationEndPoint);
+            sendingSocket.SendTo(packet, destinationEndPoint);
 
             EndPoint fromEndpoint = new IPEndPoint(destinationEndPoint.Address, port);
             TcpPacket? tcpHeader = null;
@@ -137,14 +134,13 @@ class Scanner : IDisposable
                 }
            
 
-                if (tcpHeader == null) return null;
+                if (tcpHeader == null) 
+                    return null;
             
 
-                // Check destination port matches our source port
                 if (tcpHeader.DestinationPort != SOURCE_PORT)
                     return null;
 
-                // Check source port matches the scanned port
                 if (tcpHeader.SourcePort != lastScannedPort)
                     return null;
 

@@ -25,14 +25,17 @@ class PacketFactory
         }
         else
         {
-            var packet = new PacketDotNet.IPv6Packet(sourceEndPoint.Address, destinationEndPoint.Address);
-            var tcp = new PacketDotNet.TcpPacket((ushort)sourceEndPoint.Port, (ushort)destinationEndPoint.Port);
-            tcp.Synchronize = true;
-            packet.PayloadPacket = tcp;
+            var ipHeader = new IPv6Packet(sourceEndPoint.Address, destinationEndPoint.Address, ProtocolType.Tcp);
 
-            tcp.UpdateTcpChecksum();
+            // Construct the TCP header.
+            var tcpHeader = new TcpPacket(ipHeader.SourceIp, ipHeader.DestinationIp, (ushort)sourceEndPoint.Port, (ushort)destinationEndPoint.Port, TcpFlags.SYN);
 
-            return packet.Bytes;
+            if (ipHeader.Bytes == null || tcpHeader.Bytes == null) { throw new Exception("Packet creation failed"); }
+
+            byte[] packet = new byte[60];
+            Array.Copy(ipHeader.Bytes, 0, packet, 0, 40);
+            Array.Copy(tcpHeader.Bytes, 0, packet, 40, 20);
+            return packet;
         }
 
         // var ipHeader = new IpHeader(sourceEndPoint.Address, destinationEndPoint.Address){
