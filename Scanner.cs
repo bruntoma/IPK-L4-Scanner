@@ -25,7 +25,6 @@ class Scanner : IDisposable
     private IPAddress destinationIp;
     private ScannerProtocol scannerType;
     private string interfaceName;
-    private int timeout;
     private int delayBetweenScans;
 
     private int lastScannedPort;
@@ -53,7 +52,6 @@ class Scanner : IDisposable
         this.scannerType = scannerType;
         this.packetFactory = new PacketFactory();
         this.interfaceName = interfaceName;
-        this.timeout = timeout;
         this.delayBetweenScans = delayBetweenScans;
 
     }

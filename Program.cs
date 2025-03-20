@@ -7,6 +7,7 @@ class Program
 {
     static void Main(string[] args)
     {
+        //fe80::da44:89ff:fe62:1ffc%enp0s3"
         Scanner scanner = new Scanner("enp0s3", IPAddress.Parse("fe80::da44:89ff:fe62:1ffc%enp0s3"), ScannerProtocol.TCP, 1000, 0);
 
         scanner.PrepareSocket();

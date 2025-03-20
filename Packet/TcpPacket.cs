@@ -85,13 +85,48 @@ public class TcpPacket : Packet
 
     private static byte[] CreatePseudoHeader(IPAddress sourceIp, IPAddress destinationIp, int tcpLength)
     {
-        byte[] header = new byte[12];
-        Array.Copy(sourceIp.GetAddressBytes(), 0, header, 0, 4);
-        Array.Copy(destinationIp.GetAddressBytes(), 0, header, 4, 4);
-        header[9] = 0x06; // Protocol (TCP)
-        header[10] = (byte)(tcpLength >> 8);
-        header[11] = (byte)(tcpLength & 0xFF);
-        return header;
+        // Check address family to determine if IPv4 or IPv6
+        if (sourceIp.AddressFamily == AddressFamily.InterNetwork)
+        {
+            // IPv4 pseudo-header (12 bytes)
+            byte[] header = new byte[12];
+            Array.Copy(sourceIp.GetAddressBytes(), 0, header, 0, 4);
+            Array.Copy(destinationIp.GetAddressBytes(), 0, header, 4, 4);
+            header[8] = 0; // Zero padding
+            header[9] = 6; // Protocol (TCP)
+            header[10] = (byte)(tcpLength >> 8);    // TCP length (high byte)
+            header[11] = (byte)(tcpLength & 0xFF);  // TCP length (low byte)
+            return header;
+        }
+        else
+        {
+            // IPv6 pseudo-header (40 bytes)
+            byte[] header = new byte[40];
+            byte[] srcBytes = sourceIp.GetAddressBytes();
+            byte[] dstBytes = destinationIp.GetAddressBytes();
+            
+            // Source address (16 bytes)
+            Array.Copy(srcBytes, 0, header, 0, 16);
+            
+            // Destination address (16 bytes)
+            Array.Copy(dstBytes, 0, header, 16, 16);
+            
+            // TCP length (4 bytes, upper 2 bytes are 0)
+            header[32] = 0;
+            header[33] = 0;
+            header[34] = (byte)(tcpLength >> 8);
+            header[35] = (byte)(tcpLength & 0xFF);
+            
+            // Zeros (3 bytes)
+            header[36] = 0;
+            header[37] = 0;
+            header[38] = 0;
+            
+            // Next Header (1 byte)
+            header[39] = 6; // TCP
+            
+            return header;
+        }
     }
 
     public static TcpPacket? FromBytes(byte[] packet, IPAddress sourceIp, IPAddress destinationIp)

@@ -25,6 +25,15 @@ class PacketFactory
         }
         else
         {
+            // var packet = new PacketDotNet.IPv6Packet(sourceEndPoint.Address, destinationEndPoint.Address);
+            // var tcp = new PacketDotNet.TcpPacket((ushort)sourceEndPoint.Port, (ushort)destinationEndPoint.Port);
+            // tcp.Synchronize = true;
+            // packet.PayloadPacket = tcp;
+
+            // tcp.UpdateTcpChecksum();
+
+            // return packet.Bytes;
+
             var ipHeader = new IPv6Packet(sourceEndPoint.Address, destinationEndPoint.Address, ProtocolType.Tcp);
 
             // Construct the TCP header.
