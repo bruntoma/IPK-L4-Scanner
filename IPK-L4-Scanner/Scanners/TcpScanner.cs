@@ -23,8 +23,7 @@ public class TcpScanner : BaseScanner
 
     public override Socket CreateReceivingSocket()
     {
-        var receivingSocket = new Socket(destinationIp.AddressFamily, SocketType.Raw, ProtocolType.Tcp) { ReceiveTimeout = timeout};
-        receivingSocket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.PacketInformation, true);
+        var receivingSocket = new Socket(destinationIp.AddressFamily, SocketType.Raw, ProtocolType.Tcp);
         receivingSocket.Bind(new IPEndPoint(sourceEndPoint.Address, 0));
         return receivingSocket;
     } 
@@ -88,12 +87,13 @@ public class TcpScanner : BaseScanner
             return tcpHeader;
     }
 
-    protected override async Task<ScanResult> HandleTimeout(int port, bool retry)
+    protected override async Task HandleTimeout(int port, bool retry)
     {
-        if (retry)
-            return new ScanResult(port, PortState.Filtered);
-        else
-            return await ScanPortAsync(port, true);    
+        // if (retry)
+        //     return new ScanResult(port, PortState.Filtered);
+        // else
+        //     return await ScanPortAsync(port, true);  
+
     }
 
 

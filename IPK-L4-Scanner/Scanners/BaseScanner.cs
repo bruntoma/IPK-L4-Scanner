@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
@@ -25,7 +26,7 @@ public abstract class BaseScanner : IDisposable
 
     private bool isListening = false;
 
-    protected Dictionary<int, TaskCompletionSource<Packet>> taskSources = new Dictionary<int, TaskCompletionSource<Packet>>();
+    protected ConcurrentDictionary<int, TaskCompletionSource<ScanResult>> taskSources = new ConcurrentDictionary<int, TaskCompletionSource<ScanResult>>();
 
     protected BaseScanner(string interfaceName, IPAddress destinationIp, IPacketFactory headerFactory, int timeout)
     {
@@ -49,7 +50,12 @@ public abstract class BaseScanner : IDisposable
 
     protected abstract Packet? GetPacketFromBytes(byte[] responseBytes, ref IPEndPoint? remoteEndPoint);
 
-    public virtual async Task<ScanResult> ScanPortAsync(int port, bool retry = false)
+    public IEnumerable<Task<ScanResult>> GetScanningTasks()
+    {
+        return this.taskSources.Select(e => e.Value.Task);
+    }
+
+    public virtual async Task ScanPortAsync(int port, bool retry = false)
     {
         if (sendingSocket is null || receivingSocket is null) throw new NullReferenceException("Sending socket cannot be null. Ensure CreateSockets() is called before ScanPort");
         lastScannedPort = port;
@@ -61,39 +67,70 @@ public abstract class BaseScanner : IDisposable
   
         try
         {
-            System.Console.WriteLine($"\nSENDING {port}");
+            //System.Console.WriteLine($"\nSENDING {port}");
             var destinationEndPoint = new IPEndPoint(destinationIp, port);
+            //await sendingSocket.SendToAsync(packet, destinationEndPoint);
             var packet = packetFactory.CreatePacket(sourceEndPoint, destinationEndPoint);
-            await sendingSocket.SendToAsync(packet, destinationEndPoint);
+
+            try {
+            sendingSocket.SendTo(packet, destinationEndPoint);
+            }
+            catch(Exception e)
+            {
+                var p = packet;
+                System.Console.WriteLine(port);
+            }
+
 
             
-            var tcs = new TaskCompletionSource<Packet>();
-            this.taskSources.Add(port, tcs);
+            var tcs = new TaskCompletionSource<ScanResult>();
+            this.taskSources.TryAdd(port, tcs);
 
-            Task timeoutTask = Task.Delay(timeout);
-            Task completedTask = await Task.WhenAny(tcs.Task, timeoutTask);
+            //do not await this
+#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+            Task.Delay(timeout).ContinueWith(async e => {
+                if (taskSources.ContainsKey(port))
+                {
 
-            await completedTask;
-            if (completedTask == timeoutTask)
-                throw new TimeoutException();
+                        if (taskSources[port].Task.IsCompleted) 
+                        {
+                            return;
+                        }
 
-            System.Console.WriteLine($"PROCESSING: {port}");
+                        if (retry == false)
+                        {
+                            
+                            if (retry)
+                            {
 
-            var res =  GetScanResultFromResponse(tcs.Task.Result);
-            System.Console.WriteLine($"RESULT: {res.Port}");
-            return res;
-        }
-        catch(TimeoutException ex)
-        {
-            System.Console.WriteLine($"TIMEOUT: {port}");
-            this.taskSources.Remove(port);
-            return await HandleTimeout(port, retry);
-        }
-        catch (SocketException ex) when (ex.SocketErrorCode == SocketError.TimedOut)
-        {
-            System.Console.WriteLine($"TIMEOUT: {port}");
-            this.taskSources.Remove(port);
-            return await HandleTimeout(port, retry);
+                                this.taskSources[port].SetResult(new ScanResult(port, PortState.Filtered));
+                                //this.taskSources.TryRemove(port, out _);                            
+                            }
+                            else
+                            {
+                                //this.taskSources.TryRemove(port, out _);          
+                                this.taskSources[port].SetResult(new ScanResult(port, PortState.Closed));
+
+                                ScanPortAsync(port, true);
+                            }
+                        }
+                        //return await HandleTimeout(port, retry);
+                }
+                //await HandleTimeout(port, retry);
+            });
+#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+
+            // Task completedTask = await Task.WhenAny(tcs.Task, timeoutTask);
+
+            // await completedTask;
+            // if (completedTask == timeoutTask)
+            //     throw new TimeoutException();
+
+            // //System.Console.WriteLine($"PROCESSING: {port}");
+
+            // var res =  GetScanResultFromResponse(tcs.Task.Result);
+            //System.Console.WriteLine($"RESULT: {res.Port}");
+            //return res;
         }
         catch (Exception ex)
         {
@@ -147,10 +184,17 @@ public abstract class BaseScanner : IDisposable
             {
                 IPEndPoint? remoteEndPoint = e.RemoteEndPoint as IPEndPoint;
                 var receivedPacket = GetPacketFromBytes(e.Buffer, ref remoteEndPoint);
-                if (remoteEndPoint != null && receivedPacket != null && this.taskSources.ContainsKey(remoteEndPoint.Port))
+                if (remoteEndPoint != null && receivedPacket != null)
                 {
-                    System.Console.WriteLine($"RECEIVED: {remoteEndPoint.Port}");
-                    taskSources[remoteEndPoint.Port].SetResult(receivedPacket);
+                    lock(this.taskSources[remoteEndPoint.Port])
+                    {
+                        if (!this.taskSources[remoteEndPoint.Port].Task.IsCompleted)
+                        {
+                            //System.Console.WriteLine($"RECEIVED: {remoteEndPoint.Port}");
+                            var result = GetScanResultFromResponse(receivedPacket);
+                            taskSources[remoteEndPoint.Port].SetResult(result);
+                        }
+                    }
                 }
             }
             
@@ -165,80 +209,7 @@ public abstract class BaseScanner : IDisposable
     }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    // public virtual ScanResult ScanPort(int port, bool retry = false)
-    // {
-    //     TaskCompletionSource<Packet> receivedPacketTcs = new TaskCompletionSource<Packet>(timeout);
-    //     var cts = new CancellationTokenSource(timeout);
-
-    //     var task =  Task.Run(() => {
-    //             if (sendingSocket is null || receivingSocket is null) throw new NullReferenceException("Sending socket cannot be null. Ensure CreateSockets() is called before ScanPort");
-
-    //             lastScannedPort = port;
-    //             var destinationEndPoint = new IPEndPoint(destinationIp, port);
-
-    //             try
-    //             {
-    //                 var packet = packetFactory.CreatePacket(sourceEndPoint, destinationEndPoint);
-    //                 sendingSocket.SendTo(packet, destinationEndPoint);
-
-    //                 EndPoint fromEndpoint = new IPEndPoint(IPAddress.Any, port);
-    //                 Packet? receivedPacket = null;
-
-
-    //                 var receiveBytes = new byte[128];
-    //                 while(receivedPacket == null)
-    //                 {
-    //                     int bytesReceived = receivingSocket.ReceiveFrom(receiveBytes, SocketFlags.None, ref fromEndpoint);
-    //                     receivedPacket = GetPacketFromBytes(receiveBytes, (IPEndPoint)fromEndpoint);
-
-    //                     if (cts.IsCancellationRequested)
-    //                     {
-    //                         return HandleTimeout(port, retry);
-    //                     }
-    //                 }
-                    
-    //                 if (receivedPacket != null)
-    //                 {
-    //                     return GetScanResultFromResponse(receiveBytes, receivedPacket);
-    //                 }
-    //                 else
-    //                 {
-    //                     return HandleTimeout(port, retry);
-    //                 }
-    //             }
-    //             catch (SocketException ex) when (ex.SocketErrorCode == SocketError.TimedOut)
-    //             {
-    //                 return HandleTimeout(port, retry);
-    //             }
-    //             catch (Exception ex)
-    //             {
-    //                 Console.WriteLine("Error: " + ex.Message);
-    //                 throw;
-    //             }
-
-    //     }, cts.Token);
-
-    //    return task.Result;
-    // }
-
-    protected abstract Task<ScanResult> HandleTimeout(int port, bool retry);
+    protected abstract Task HandleTimeout(int port, bool retry);
 
     protected abstract ScanResult GetScanResultFromResponse(Packet packet);
 
