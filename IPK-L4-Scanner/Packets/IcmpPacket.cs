@@ -96,7 +96,7 @@ public UdpPacket? GetOriginalUdpPacket()
         else
         {
             // For IPv4, addresses are at offsets 12 and 16
-            if (Data.Length >= 20) // Ensure we have a complete IPv4 header
+            if (Data.Length >= 20)
             {
                 byte[] srcBytes = new byte[4];
                 byte[] dstBytes = new byte[4];
@@ -113,8 +113,6 @@ public UdpPacket? GetOriginalUdpPacket()
         
         if (sourceIp != null && destIp != null)
         {
-            // Use the UdpPacket.FromBytes method to parse the UDP packet
-            // The Data field already contains the full original IP packet
             return UdpPacket.FromBytes(Data, sourceIp, destIp);
         }
         

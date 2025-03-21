@@ -24,11 +24,12 @@ public class TcpScanner : BaseScanner
     public override Socket CreateReceivingSocket()
     {
         var receivingSocket = new Socket(destinationIp.AddressFamily, SocketType.Raw, ProtocolType.Tcp) { ReceiveTimeout = timeout};
+        receivingSocket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.PacketInformation, true);
         receivingSocket.Bind(new IPEndPoint(sourceEndPoint.Address, 0));
         return receivingSocket;
     } 
 
-    protected override ScanResult GetScanResultFromResponse(byte[] response, Packet packet)
+    protected override ScanResult GetScanResultFromResponse(Packet packet)
     {
         var tcpHeader = packet as TcpPacket;
         if (tcpHeader is null) { throw new NullReferenceException("Received packet is not a TCP packet. Wrong packets should not be returned from GetPacketFromBytes");};
@@ -45,46 +46,54 @@ public class TcpScanner : BaseScanner
         throw new Exception("Invalid response received");
     }
 
-    protected override TcpPacket? GetPacketFromBytes(byte[] responseBytes, IPEndPoint destinationEndPoint)
+    protected override TcpPacket? GetPacketFromBytes(byte[] responseBytes, ref IPEndPoint? remoteEndPoint)
     {
+
+        //TODO: DO NOT USE remoteEndPoint, it does not work!
             TcpPacket? tcpHeader;
             IPPacket? ipHeader;
-            if (destinationEndPoint.Address.AddressFamily == AddressFamily.InterNetwork)
+
+            if (remoteEndPoint == null)
+                return null;
+
+            if (remoteEndPoint.Address.AddressFamily == AddressFamily.InterNetwork)
             {
                 ipHeader = IPv4Packet.FromBytes(responseBytes);
-                if (ipHeader == null || ipHeader.SourceIp == null || ipHeader.DestinationIp == null) return null;
+                if (ipHeader == null || ipHeader.SourceIp == null || ipHeader.DestinationIp == null) 
+                {
+                    return null;
+                }
 
                 // Verify response is from the target IP
-                if (!ipHeader.SourceIp.Equals(destinationEndPoint.Address)) return null;
+                if (!ipHeader.SourceIp.Equals(this.destinationIp)) 
+                {
+                    return null;
+                }
 
-                tcpHeader = TcpPacket.FromBytes(responseBytes, ipHeader.SourceIp, ipHeader.DestinationIp);
+                if (!ipHeader.DestinationIp.Equals(this.sourceEndPoint.Address)) 
+                {
+                    return null;
+                }
 
-            } 
-            else
-            {
-                tcpHeader = TcpPacket.FromBytes(responseBytes, this.sourceEndPoint.Address, this.destinationIp);
             }
-        
 
-            if (tcpHeader == null) 
+            tcpHeader = TcpPacket.FromBytes(responseBytes, remoteEndPoint.Address, this.sourceEndPoint.Address);
+            if (tcpHeader == null || tcpHeader.DestinationPort != SOURCE_PORT)
                 return null;
-        
-
-            if (tcpHeader.DestinationPort != SOURCE_PORT)
-                return null;
-
-            if (tcpHeader.SourcePort != lastScannedPort)
+            
+            if (!this.taskSources.ContainsKey(tcpHeader.SourcePort))
                 return null;
 
+            remoteEndPoint = new IPEndPoint(tcpHeader.SourceIp, tcpHeader.SourcePort);
             return tcpHeader;
     }
 
-    protected override ScanResult HandleTimeout(int port, bool retry)
+    protected override async Task<ScanResult> HandleTimeout(int port, bool retry)
     {
         if (retry)
             return new ScanResult(port, PortState.Filtered);
         else
-            return ScanPort(port, true);    
+            return await ScanPortAsync(port, true);    
     }
 
 

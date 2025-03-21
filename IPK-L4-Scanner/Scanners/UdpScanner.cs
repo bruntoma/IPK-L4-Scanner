@@ -13,11 +13,11 @@ public class UdpScanner : BaseScanner
         this.delayBetweenScans = delayBetweenScans;
     }
 
-    public override ScanResult ScanPort(int port, bool retry = false)
+    public override Task<ScanResult> ScanPortAsync(int port, bool retry = false)
     {
-        var result = base.ScanPort(port, retry);
-        Thread.Sleep(delayBetweenScans);
-        return result;
+        var res = base.ScanPortAsync(port, retry);
+        Thread.Sleep(1000);
+        return res;
     }
 
     public override Socket CreateReceivingSocket()
@@ -38,37 +38,34 @@ public class UdpScanner : BaseScanner
         return sendingSocket;
     }
 
-    protected override Packet? GetPacketFromBytes(byte[] responseBytes, IPEndPoint packetSourceEndpoint)
+    protected override IcmpPacket? GetPacketFromBytes(byte[] responseBytes, ref IPEndPoint? remoteEndPoint)
     {
             IcmpPacket? icmpPacket;
-            IPPacket? ipPacket;
-            if (packetSourceEndpoint.Address.AddressFamily == AddressFamily.InterNetwork)
-            {
-                ipPacket = IPv4Packet.FromBytes(responseBytes);
-                if (ipPacket == null || ipPacket.SourceIp == null || ipPacket.DestinationIp == null) return null;
-            }
-
+            if (remoteEndPoint == null)
+                return null;
 
             // Verify response is from the target IP
-            if (!this.destinationIp.Equals(packetSourceEndpoint.Address)) return null;
-
-            icmpPacket = IcmpPacket.FromBytes(responseBytes, this.sourceEndPoint.Address, this.destinationIp);
+            icmpPacket = IcmpPacket.FromBytes(responseBytes, remoteEndPoint.Address, this.destinationIp);
 
             var udpPacket = icmpPacket?.GetOriginalUdpPacket();
-            if (udpPacket == null)
-                return null;
 
-            if (udpPacket.SourcePort != SOURCE_PORT || udpPacket.DestinationPort != lastScannedPort)
+            if (udpPacket == null || udpPacket.SourcePort != SOURCE_PORT || this.taskSources.ContainsKey(udpPacket.DestinationPort) == false)
+            {
+                remoteEndPoint = null;
                 return null;
+            }
 
             if (icmpPacket == null || icmpPacket.Code != 3 || icmpPacket.Type != 3)            
+            {
+                remoteEndPoint = null;
                 return null;
+            }
 
-
+            remoteEndPoint = new IPEndPoint(remoteEndPoint.Address, udpPacket.DestinationPort);
             return icmpPacket;
     }
 
-    protected override ScanResult GetScanResultFromResponse(byte[] response, Packet packet)
+    protected override ScanResult GetScanResultFromResponse(Packet packet)
     {
         //We do not have to extract the original packet from ICMP packet to get port, because UDP scanning in sequential.
         var icmpPacket = packet as IcmpPacket;
@@ -81,8 +78,8 @@ public class UdpScanner : BaseScanner
         return new ScanResult(lastScannedPort, PortState.Open);
     }
 
-    protected override ScanResult HandleTimeout(int port, bool retry)
+    protected override Task<ScanResult> HandleTimeout(int port, bool retry)
     {
-        return new ScanResult(port, PortState.Open);
+        return Task.FromResult<ScanResult>(new ScanResult(port, PortState.Open));
     }
 }
