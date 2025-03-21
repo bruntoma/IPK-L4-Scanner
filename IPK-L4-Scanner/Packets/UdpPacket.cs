@@ -13,17 +13,16 @@ public class UdpPacket : Packet
     public IPAddress SourceIp { get; private set; }
     public IPAddress DestinationIp { get; private set; }
 
-    private const byte DEFAULT_UDP_Length = 8;
 
     public UdpPacket(IPAddress sourceIp, IPAddress destinationIp, ushort sourcePort, ushort destinationPort) 
-        : base(DEFAULT_UDP_Length)
+        : base(Packet.DEFAULT_UDP_Length)
     {
         this.SourceIp = sourceIp;
         this.DestinationIp = destinationIp;
         this.SourcePort = sourcePort;
         this.DestinationPort = destinationPort;
 
-        this.Bytes = new byte[8];
+        this.Bytes = new byte[Packet.DEFAULT_UDP_Length];
 
         // Source port
         this.Bytes[0] = (byte)(sourcePort >> 8);
@@ -100,7 +99,7 @@ public class UdpPacket : Packet
 
     public static UdpPacket? FromBytes(byte[] packet, IPAddress sourceIp, IPAddress destinationIp)
     {
-        if (packet.Length < 28) // Minimum IPv4 header (20) + UDP header (8)
+        if (packet.Length < DEFAULT_IPv4_Length + DEFAULT_UDP_Length)
         {
             Console.WriteLine("Packet too short to parse UDP header.");
             return null;

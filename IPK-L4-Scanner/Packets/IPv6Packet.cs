@@ -6,12 +6,11 @@ namespace IPK_L4_Scanner.Packets
 {
     public class IPv6Packet : IPPacket
     {
-        private const byte DEFAULT_IPv6_Length = 40;
 
         //TODO: FIX comments
         public IPv6Packet(IPAddress source, IPAddress destination, ProtocolType protocolType) : base(source, destination, protocolType, DEFAULT_IPv6_Length)
         {
-            this.Length = 40;
+            this.Length = DEFAULT_IPv6_Length;
             this.Bytes = new byte[Length];
             
             // 4 bits version and 4 bits of Traffic Class.
@@ -20,7 +19,7 @@ namespace IPK_L4_Scanner.Packets
             // Traffic Class
             this.Bytes[1] = 0x00;
             
-            // Flow Label —  0.
+            // Flow Label
             this.Bytes[2] = 0x00;
             this.Bytes[3] = 0x00;
             
@@ -46,8 +45,11 @@ namespace IPK_L4_Scanner.Packets
 
         public static IPv6Packet? FromBytes(byte[] packet)
         {
-            if (packet.Length < 40)
+            if (packet.Length < DEFAULT_IPv6_Length)
+            {
+                Console.WriteLine("Packet too short to parse IPv6 header.");
                 return null;
+            }
             
             int version = packet[0] >> 4;
             if (version != 6)

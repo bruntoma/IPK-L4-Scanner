@@ -46,12 +46,6 @@ public class UdpScanner : BaseScanner
             {
                 ipPacket = IPv4Packet.FromBytes(responseBytes);
                 if (ipPacket == null || ipPacket.SourceIp == null || ipPacket.DestinationIp == null) return null;
-
-
-
-            } 
-            else
-            {
             }
 
 
@@ -59,6 +53,14 @@ public class UdpScanner : BaseScanner
             if (!this.destinationIp.Equals(packetSourceEndpoint.Address)) return null;
 
             icmpPacket = IcmpPacket.FromBytes(responseBytes, this.sourceEndPoint.Address, this.destinationIp);
+
+            var udpPacket = icmpPacket?.GetOriginalUdpPacket();
+            if (udpPacket == null)
+                return null;
+
+            if (udpPacket.SourcePort != SOURCE_PORT || udpPacket.DestinationPort != lastScannedPort)
+                return null;
+
             if (icmpPacket == null || icmpPacket.Code != 3 || icmpPacket.Type != 3)            
                 return null;
 
@@ -68,18 +70,15 @@ public class UdpScanner : BaseScanner
 
     protected override ScanResult GetScanResultFromResponse(byte[] response, Packet packet)
     {
+        //We do not have to extract the original packet from ICMP packet to get port, because UDP scanning in sequential.
         var icmpPacket = packet as IcmpPacket;
         if (icmpPacket is null) { throw new NullReferenceException("Received packet is not a ICMP packet. Wrong packets should not be returned from GetPacketFromBytes");};
 
-        var originalUdpPacket = icmpPacket.GetOriginalUdpPacket();
-        if (originalUdpPacket == null)
-            throw new Exception("Extraction of original UDP packet from received ICMP header failed.");
-
         if (icmpPacket.Type == 3)
         {
-            return new ScanResult(originalUdpPacket.DestinationPort, PortState.Closed);
+            return new ScanResult(lastScannedPort, PortState.Closed);
         }
-        return new ScanResult(originalUdpPacket.DestinationPort, PortState.Open);
+        return new ScanResult(lastScannedPort, PortState.Open);
     }
 
     protected override ScanResult HandleTimeout(int port, bool retry)

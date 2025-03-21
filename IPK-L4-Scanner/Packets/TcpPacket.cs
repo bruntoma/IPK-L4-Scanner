@@ -27,9 +27,8 @@ public class TcpPacket : Packet
 
     public TcpFlags Flags {get; private set;} = 0;
 
-    private const byte DEFAULT_TCP_Length = 20;
 
-    public TcpPacket(IPAddress sourceIp, IPAddress destinationIp, ushort sourcePort, ushort destinationPort, TcpFlags flags = 0) : base(DEFAULT_TCP_Length)
+    public TcpPacket(IPAddress sourceIp, IPAddress destinationIp, ushort sourcePort, ushort destinationPort, TcpFlags flags = 0) : base(Packet.DEFAULT_TCP_Length)
     {
         this.SourceIp = sourceIp;
         this.DestinationIp = destinationIp;
@@ -37,7 +36,7 @@ public class TcpPacket : Packet
         this.DestinationPort = destinationPort;
         this.Flags = flags;
 
-        this.Bytes = new byte[20];
+        this.Bytes = new byte[Packet.DEFAULT_TCP_Length];
 
         this.Bytes[0] = (byte)(sourcePort >> 8);
         this.Bytes[1] = (byte)(sourcePort & 0xFF);
@@ -87,7 +86,6 @@ public class TcpPacket : Packet
 
     private static byte[] CreatePseudoHeader(IPAddress sourceIp, IPAddress destinationIp, int tcpLength)
     {
-        // Check address family to determine if IPv4 or IPv6
         if (sourceIp.AddressFamily == AddressFamily.InterNetwork)
         {
             // IPv4 pseudo-header (12 bytes)
@@ -95,9 +93,11 @@ public class TcpPacket : Packet
             Array.Copy(sourceIp.GetAddressBytes(), 0, header, 0, 4);
             Array.Copy(destinationIp.GetAddressBytes(), 0, header, 4, 4);
             header[8] = 0; // Zero padding
-            header[9] = 6; // Protocol (TCP)
-            header[10] = (byte)(tcpLength >> 8);    // TCP length (high byte)
-            header[11] = (byte)(tcpLength & 0xFF);  // TCP length (low byte)
+            header[9] = 6; // Protocol
+
+            // TCP length
+            header[10] = (byte)(tcpLength >> 8);    
+            header[11] = (byte)(tcpLength & 0xFF);  
             return header;
         }
         else
@@ -133,13 +133,14 @@ public class TcpPacket : Packet
 
     public static TcpPacket? FromBytes(byte[] packet, IPAddress sourceIp, IPAddress destinationIp)
     {
-        if (packet.Length < 40)
+        if (packet.Length < DEFAULT_IPv4_Length + DEFAULT_TCP_Length)
         {
             Console.WriteLine("Packet too short to parse TCP header.");
             return null;
         }
         
-        int tcpHeaderOffset = (sourceIp.AddressFamily == AddressFamily.InterNetwork) ? (packet[0] & 0x0F) * 4 : 0; // Ip header length (when receiving ipv6, we receive only the tcp header)
+        // Ip header length (when receiving ipv6, we receive only the tcp header)
+        int tcpHeaderOffset = (sourceIp.AddressFamily == AddressFamily.InterNetwork) ? (packet[0] & 0x0F) * 4 : 0; 
         ushort sourcePort = (ushort)((packet[tcpHeaderOffset] << 8) | packet[tcpHeaderOffset + 1]);
         ushort destinationPort = (ushort)((packet[tcpHeaderOffset + 2] << 8) | packet[tcpHeaderOffset + 3]);
         TcpFlags flags = (TcpFlags)packet[tcpHeaderOffset + 13];
@@ -149,13 +150,11 @@ public class TcpPacket : Packet
 
     public bool IsAck()
     {
-        // SYN flag is the second bit (0x02 or 00000010)
         return Flags.HasFlag(TcpFlags.ACK);
     }
 
     public bool IsReset()
     {
-        // RST flag is the fourth bit (0x04 or 00000100)
         return Flags.HasFlag(TcpFlags.RST);
     }
 }

@@ -18,10 +18,9 @@ class UdpPacketFactory : IPacketFactory
             ipHeader = new IPv6Packet(sourceEndPoint.Address, destinationEndPoint.Address, ProtocolType.Udp);
         }
         
-        var udpHeader = new UdpPacket(ipHeader.SourceIp, ipHeader.DestinationIp, 
-            (ushort)sourceEndPoint.Port, (ushort)destinationEndPoint.Port);
+        var udpHeader = new UdpPacket(ipHeader.SourceIp, ipHeader.DestinationIp, (ushort)sourceEndPoint.Port, (ushort)destinationEndPoint.Port);
             
-        if (ipHeader.Bytes == null || udpHeader.Bytes == null) 
+        if (ipHeader.Bytes == null || udpHeader.Bytes == null)  
         { 
             throw new Exception("Packet creation failed"); 
         }

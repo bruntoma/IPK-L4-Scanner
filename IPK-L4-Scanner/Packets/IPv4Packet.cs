@@ -8,11 +8,9 @@ namespace IPK_L4_Scanner.Packets;
 
 public class IPv4Packet : IPPacket
 {
-    private const byte DEFAULT_IPv4_Length = 20;
-
-    public IPv4Packet(IPAddress source, IPAddress destination, ProtocolType protocolType) : base(source, destination, protocolType, DEFAULT_IPv4_Length)
+    public IPv4Packet(IPAddress source, IPAddress destination, ProtocolType protocolType) : base(source, destination, protocolType, Packet.DEFAULT_IPv4_Length)
     {
-        this.Length = 20;
+        this.Length = Packet.DEFAULT_IPv4_Length;
         this.Bytes = new byte[Length];
         this.Bytes[0] = 0x45; // Version and IHL
         this.Bytes[1] = 0x00; // DSCP/ECN
@@ -36,6 +34,12 @@ public class IPv4Packet : IPPacket
 
     public static IPPacket? FromBytes(byte[] packet)
     {
+        if (packet.Length < DEFAULT_IPv4_Length)
+        {
+            Console.WriteLine("Packet too short to parse TCP header.");
+            return null;
+        }
+
         byte protocolType = packet[9];
         IPAddress sourceAddress = new IPAddress(new byte[] { packet[12], packet[13], packet[14], packet[15] });
         IPAddress destinationAddress = new IPAddress(new byte[] { packet[16], packet[17], packet[18], packet[19] });

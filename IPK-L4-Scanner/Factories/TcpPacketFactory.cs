@@ -19,7 +19,10 @@ class PacketFactory : IPacketFactory
         }
 
         var tcpHeader = new TcpPacket(ipHeader.SourceIp, ipHeader.DestinationIp, (ushort)sourceEndPoint.Port, (ushort)destinationEndPoint.Port, TcpFlags.SYN);
-        if (ipHeader.Bytes == null || tcpHeader.Bytes == null) { throw new Exception("Packet creation failed"); }
+        if (ipHeader.Bytes == null || tcpHeader.Bytes == null) 
+        { 
+            throw new Exception("Packet creation failed"); 
+        }
 
         byte[] packet = new byte[ipHeader.Length + tcpHeader.Length];
         Array.Copy(ipHeader.Bytes, 0, packet, 0, ipHeader.Length);

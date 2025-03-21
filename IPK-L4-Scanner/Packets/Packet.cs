@@ -2,6 +2,18 @@ namespace IPK_L4_Scanner.Packets;
 
 
 public abstract class Packet {
+    public static byte DEFAULT_IPv4_Length = 20;
+    public static byte DEFAULT_IPv6_Length = 40;
+
+    public static byte DEFAULT_TCP_Length = 20;
+
+    public static byte DEFAULT_UDP_Length = 8;
+
+    public static byte DEFAULT_ICMP_Length = 8;
+
+
+    
+
     public byte Length {get; init;}
     public byte[]? Bytes { get; protected set; }  
 
