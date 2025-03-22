@@ -26,7 +26,10 @@ public abstract class BaseScanner : IDisposable
 
     private bool isListening = false;
 
-    protected ConcurrentDictionary<int, TaskCompletionSource<ScanResult>> taskSources = new ConcurrentDictionary<int, TaskCompletionSource<ScanResult>>();
+    private ConcurrentDictionary<int, TaskCompletionSource<ScanResult>> taskSources = new ConcurrentDictionary<int, TaskCompletionSource<ScanResult>>();
+
+    public delegate void ScanFinishedHandler(ScanResult result);
+    public event ScanFinishedHandler ScanFinished;
 
     protected BaseScanner(string interfaceName, IPAddress destinationIp, IPacketFactory headerFactory, int timeout)
     {
@@ -49,6 +52,17 @@ public abstract class BaseScanner : IDisposable
     public abstract Socket CreateReceivingSocket();
 
     protected abstract Packet? GetPacketFromBytes(byte[] responseBytes, ref IPEndPoint? remoteEndPoint);
+
+    protected ICollection<int> GetScannedPortsCollection()
+    {
+        return taskSources.Keys;
+    }
+
+    protected void SetScanResult(ScanResult result)
+    {
+        taskSources[result.Port].SetResult(result);
+        ScanFinished?.Invoke(result);
+    }
 
     public IEnumerable<Task<ScanResult>> GetScanningTasks()
     {
@@ -149,7 +163,7 @@ public abstract class BaseScanner : IDisposable
                         {
                             //System.Console.WriteLine($"RECEIVED: {remoteEndPoint.Port}");
                             var result = GetScanResultFromResponse(receivedPacket);
-                            taskSources[remoteEndPoint.Port].SetResult(result);
+                            this.SetScanResult(result);
                         }
                     }
                 }

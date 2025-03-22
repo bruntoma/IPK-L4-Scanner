@@ -71,6 +71,7 @@ public class TcpScanner : BaseScanner
                     return null;
                 }
 
+                //Verify response is sent to the source ip
                 if (!ipHeader.DestinationIp.Equals(this.sourceEndPoint.Address)) 
                 {
                     return null;
@@ -82,7 +83,8 @@ public class TcpScanner : BaseScanner
             if (tcpHeader == null || tcpHeader.DestinationPort != SOURCE_PORT)
                 return null;
             
-            if (!this.taskSources.ContainsKey(tcpHeader.SourcePort))
+            //The response is from scanned port
+            if (!this.GetScannedPortsCollection().Contains(tcpHeader.SourcePort))
                 return null;
 
             remoteEndPoint = new IPEndPoint(tcpHeader.SourceIp, tcpHeader.SourcePort);
@@ -93,7 +95,7 @@ public class TcpScanner : BaseScanner
     {
         if (retry)
         {
-            this.taskSources[port].SetResult(new ScanResult(port, PortState.Filtered));
+            SetScanResult(new ScanResult(port, PortState.Filtered));
         }
         else
         {

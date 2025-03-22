@@ -48,7 +48,7 @@ public class UdpScanner : BaseScanner
 
             var udpPacket = icmpPacket?.GetOriginalUdpPacket();
 
-            if (udpPacket == null || udpPacket.SourcePort != SOURCE_PORT || this.taskSources.ContainsKey(udpPacket.DestinationPort) == false)
+            if (udpPacket == null || udpPacket.SourcePort != SOURCE_PORT || !this.GetScannedPortsCollection().Contains(udpPacket.DestinationPort))
             {
                 remoteEndPoint = null;
                 return null;
@@ -79,6 +79,6 @@ public class UdpScanner : BaseScanner
 
     protected override async Task HandleTimeout(int port, bool retry)
     {
-        this.taskSources[port].SetResult(new ScanResult(port, PortState.Open));
+        SetScanResult(new ScanResult(port, PortState.Open));
     }
 }
