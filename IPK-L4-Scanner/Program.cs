@@ -1,6 +1,8 @@
 ﻿using System.Diagnostics;
 using System.Net;
+using System.Net.Sockets;
 using System.Runtime.InteropServices;
+using System.Text;
 
 namespace IPK_L4_Scanner;
 
@@ -8,22 +10,16 @@ class Program
 {
     static async Task Main(string[] args)
     {
-        
         //fe80::da44:89ff:fe62:1ffc%enp0s3"
-        BaseScanner scanner = new TcpScanner("enp0s3", IPAddress.Parse("fe80::da44:89ff:fe62:1ffc%enp0s3"), 100);
+        BaseScanner scanner = new UdpScanner("enp0s3", IPAddress.Parse("fe80::da44:89ff:fe62:1ffc%enp0s3"), 100);
 
         scanner.CreateSockets();
 
         Stopwatch watch = Stopwatch.StartNew();
         var list = new List<Task<ScanResult>>();
-        for (int i = 52; i < 270; i++)
+        for (int i = 0; i < 500; i++)
         {
-            //list.Add(scanner.ScanPortAsync(i));
             await scanner.ScanPortAsync(i);
-            //Console.WriteLine(res.Port + ", " + res.PortState);
-            //if (result.PortState == PortState.Open)
-            //{
-            //}
         }
 
         System.Console.WriteLine("SENDING DONE");
@@ -44,7 +40,9 @@ class Program
         foreach(var t in tasks)
         {
             var result = t.Result;
-            Console.WriteLine(result.Port + ", " + result.PortState);
+
+            //if (result.PortState == PortState.Open)
+                Console.WriteLine(result.Port + ", " + result.PortState);
         }
 
         System.Console.WriteLine($"Time: {watch.ElapsedMilliseconds}");

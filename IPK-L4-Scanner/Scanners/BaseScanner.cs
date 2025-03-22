@@ -30,7 +30,7 @@ public abstract class BaseScanner : IDisposable
 
     protected BaseScanner(string interfaceName, IPAddress destinationIp, IPacketFactory headerFactory, int timeout)
     {
-        var ip = GetIpOfInterface(interfaceName, destinationIp.AddressFamily) ?? throw new Exception($"Could not find IPAddress of network interface ({interfaceName})");
+        var ip = GetIpOfInterface(interfaceName, destinationIp.AddressFamily, destinationIp.IsIPv6LinkLocal) ?? throw new Exception($"Could not find IPAddress of network interface ({interfaceName})");
         this.sourceEndPoint = new IPEndPoint(ip, SOURCE_PORT);
 
         this.destinationIp = destinationIp;
@@ -67,21 +67,9 @@ public abstract class BaseScanner : IDisposable
   
         try
         {
-            //System.Console.WriteLine($"\nSENDING {port}");
-            var destinationEndPoint = new IPEndPoint(destinationIp, port);
-            //await sendingSocket.SendToAsync(packet, destinationEndPoint);
-            var packet = packetFactory.CreatePacket(sourceEndPoint, destinationEndPoint);
-
-            try {
-            sendingSocket.SendTo(packet, destinationEndPoint);
-            }
-            catch(Exception e)
-            {
-                var p = packet;
-                System.Console.WriteLine(port);
-            }
-
-
+            var packet = packetFactory.CreatePacket(sourceEndPoint, new IPEndPoint(destinationIp, port));
+            //Port is set to 0, because for some reason it is the only thing that works always
+            await sendingSocket.SendToAsync(packet, new IPEndPoint(destinationIp, 0));
             
             var tcs = new TaskCompletionSource<ScanResult>();
             this.taskSources.TryAdd(port, tcs);
@@ -119,18 +107,6 @@ public abstract class BaseScanner : IDisposable
                 //await HandleTimeout(port, retry);
             });
 #pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
-
-            // Task completedTask = await Task.WhenAny(tcs.Task, timeoutTask);
-
-            // await completedTask;
-            // if (completedTask == timeoutTask)
-            //     throw new TimeoutException();
-
-            // //System.Console.WriteLine($"PROCESSING: {port}");
-
-            // var res =  GetScanResultFromResponse(tcs.Task.Result);
-            //System.Console.WriteLine($"RESULT: {res.Port}");
-            //return res;
         }
         catch (Exception ex)
         {

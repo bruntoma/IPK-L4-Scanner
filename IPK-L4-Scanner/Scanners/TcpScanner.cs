@@ -18,6 +18,8 @@ public class TcpScanner : BaseScanner
         {
             sendingSocket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.HeaderIncluded, true);
         }
+
+
         return sendingSocket;
     }
 
