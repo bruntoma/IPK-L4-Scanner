@@ -11,7 +11,7 @@ class Program
     static async Task Main(string[] args)
     {
         //fe80::da44:89ff:fe62:1ffc%enp0s3"
-        BaseScanner scanner = new UdpScanner("enp0s3", IPAddress.Parse("fe80::da44:89ff:fe62:1ffc%enp0s3"), 100);
+        BaseScanner scanner = new TcpScanner("enp0s3", IPAddress.Parse("10.0.0.138"), 2000);
 
         scanner.CreateSockets();
 
@@ -19,7 +19,7 @@ class Program
         var list = new List<Task<ScanResult>>();
         for (int i = 0; i < 500; i++)
         {
-            await scanner.ScanPortAsync(i);
+            await scanner.StartPortScanAsync(i);
         }
 
         System.Console.WriteLine("SENDING DONE");

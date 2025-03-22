@@ -55,7 +55,7 @@ public abstract class BaseScanner : IDisposable
         return this.taskSources.Select(e => e.Value.Task);
     }
 
-    public virtual async Task ScanPortAsync(int port, bool retry = false)
+    public virtual async Task StartPortScanAsync(int port, bool retry = false)
     {
         if (sendingSocket is null || receivingSocket is null) throw new NullReferenceException("Sending socket cannot be null. Ensure CreateSockets() is called before ScanPort");
         lastScannedPort = port;
@@ -79,32 +79,13 @@ public abstract class BaseScanner : IDisposable
             Task.Delay(timeout).ContinueWith(async e => {
                 if (taskSources.ContainsKey(port))
                 {
-
-                        if (taskSources[port].Task.IsCompleted) 
-                        {
+                        if (taskSources[port].Task.IsCompleted)  
                             return;
-                        }
 
-                        if (retry == false)
-                        {
+                        await HandleTimeout(port, retry);
                             
-                            if (retry)
-                            {
-
-                                this.taskSources[port].SetResult(new ScanResult(port, PortState.Filtered));
-                                //this.taskSources.TryRemove(port, out _);                            
-                            }
-                            else
-                            {
-                                //this.taskSources.TryRemove(port, out _);          
-                                this.taskSources[port].SetResult(new ScanResult(port, PortState.Closed));
-
-                                ScanPortAsync(port, true);
-                            }
-                        }
-                        //return await HandleTimeout(port, retry);
+                        
                 }
-                //await HandleTimeout(port, retry);
             });
 #pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
         }

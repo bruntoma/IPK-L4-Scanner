@@ -91,12 +91,13 @@ public class TcpScanner : BaseScanner
 
     protected override async Task HandleTimeout(int port, bool retry)
     {
-        // if (retry)
-        //     return new ScanResult(port, PortState.Filtered);
-        // else
-        //     return await ScanPortAsync(port, true);  
-
+        if (retry)
+        {
+            this.taskSources[port].SetResult(new ScanResult(port, PortState.Filtered));
+        }
+        else
+        {
+            await StartPortScanAsync(port, true);
+        }
     }
-
-
 }

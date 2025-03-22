@@ -13,11 +13,10 @@ public class UdpScanner : BaseScanner
         this.delayBetweenScans = delayBetweenScans;
     }
 
-    public override async Task ScanPortAsync(int port, bool retry = false)
+    public override async Task StartPortScanAsync(int port, bool retry = false)
     {
-        await base.ScanPortAsync(port, retry);
+        await base.StartPortScanAsync(port, retry);
         await Task.Delay(1000);
-        //return res;
     }
 
     public override Socket CreateReceivingSocket()
@@ -80,6 +79,6 @@ public class UdpScanner : BaseScanner
 
     protected override async Task HandleTimeout(int port, bool retry)
     {
-        //return Task.FromResult<ScanResult>(new ScanResult(port, PortState.Open));
+        this.taskSources[port].SetResult(new ScanResult(port, PortState.Open));
     }
 }
