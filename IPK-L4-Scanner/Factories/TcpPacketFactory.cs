@@ -27,6 +27,6 @@ class PacketFactory : IPacketFactory
         byte[] packet = new byte[ipHeader.Length + tcpHeader.Length];
         Array.Copy(ipHeader.Bytes, 0, packet, 0, ipHeader.Length);
         Array.Copy(tcpHeader.Bytes, 0, packet, ipHeader.Length, tcpHeader.Length);
-        return packet;
+        return tcpHeader.Bytes;
     }
 }
