@@ -103,18 +103,20 @@ public class TcpScanner : BaseScanner
             return tcpHeader;
     }
 
-    protected override void HandleTimeout(int port, bool retry)
+    protected override async Task<ScanResult> HandleTimeout(int port, bool retry)
     {
         
         if (retry)
         {
                 //System.Console.WriteLine($"Timeouted: .{port}., IsCompleted: {taskSources[port].Task.IsCompleted}, Retry: {retry}, Time: {stopwatch.ElapsedMilliseconds}, RESULT: FILTERED");
-                SetScanResult(new ScanResult(port, PortState.Filtered));
+                var result = new ScanResult(port, PortState.Filtered);
+                SetScanResult(result);
+                return result;
         }
         else
         {
             //System.Console.WriteLine($"Timeouted: .{port}., IsCompleted: {taskSources[port].Task.IsCompleted}, Retry: {retry}, Time: {stopwatch.ElapsedMilliseconds}");
-            StartPortScanAsync(port, true);
+            return await StartPortScanAsync(port, true);
         }
     }
 }

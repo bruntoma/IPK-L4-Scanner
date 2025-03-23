@@ -22,11 +22,8 @@ public abstract class BaseScanner : IDisposable
     protected int timeout;
 
     protected int lastScannedPort = 0;
-
-    private bool isListening = false;
-
     protected ConcurrentDictionary<int, TaskCompletionSource<ScanResult>> taskSources = new ConcurrentDictionary<int, TaskCompletionSource<ScanResult>>();
-    private CancellationTokenSource cts = new CancellationTokenSource();
+    private CancellationTokenSource? listeningTcs = null;
 
     public delegate void ScanFinishedHandler(ScanResult result);
     public event ScanFinishedHandler ScanFinished;
@@ -80,11 +77,10 @@ public abstract class BaseScanner : IDisposable
 
     public virtual async Task<ScanResult> StartPortScanAsync(int port, bool retry = false)
     {
-        //System.Console.WriteLine("Sending ." + port + $". time: {stopwatch.ElapsedMilliseconds}");
         if (sendingSocket is null || receivingSocket is null) throw new NullReferenceException("Sending socket cannot be null. Ensure CreateSockets() is called before ScanPort");
         lastScannedPort = port;
 
-        if (isListening == false)
+        if (listeningTcs == null)
         {
            StartListening();
         }
@@ -93,7 +89,7 @@ public abstract class BaseScanner : IDisposable
         {
             var packet = packetFactory.CreatePacket(sourceEndPoint, new IPEndPoint(destinationIp, port));
             //Port is set to 0, because for some reason it is the only thing that works always
-            System.Console.WriteLine($"Scanning: .{port}. time: {stopwatch.ElapsedMilliseconds}");
+            Debug.WriteLine($"Scanning: .{port}. time: {stopwatch.ElapsedMilliseconds}");
 
             var tcs = new TaskCompletionSource<ScanResult>();
             if (this.taskSources.TryAdd(port, tcs) == false && retry == false)
@@ -110,26 +106,12 @@ public abstract class BaseScanner : IDisposable
             }
             else
             {
-                return new ScanResult(port, PortState.Filtered);
+                return await HandleTimeout(port, retry);
             }
-           
-
-            // var cancellationTokenSource = new CancellationTokenSource(timeout);
-            // cancellationTokenSource.Token.Register(() => {
-
-            //     if (taskSources.ContainsKey(port))
-            //     {
-            //             if (taskSources[port].Task.IsCompleted)  
-            //                 return;
-                        
-            //             HandleTimeout(port, retry);
-            //     }
-            // }, useSynchronizationContext: true);
         }
         catch (Exception ex)
         {
-            Console.WriteLine("Error: " + ex.Message);
-            throw;
+            throw new Exception("Error during starting port scan.", ex);
         }
         finally{
         }
@@ -137,16 +119,21 @@ public abstract class BaseScanner : IDisposable
 
     public void StartListening()
     {
-        isListening = true;
+        listeningTcs = new CancellationTokenSource();
+
         byte[] buffer = new byte[1024];
         if (receivingSocket == null)
             return;
         int index = 0;
-        new Thread(() => {
-            while(isListening)
+        new Task(() => {
+            while(!listeningTcs.IsCancellationRequested)
             {
                 EndPoint endpoint = new IPEndPoint(IPAddress.Any, 0);
-                int bytesCount = receivingSocket.ReceiveFrom(buffer, SocketFlags.None, ref endpoint);            
+
+                if (!listeningTcs.IsCancellationRequested)
+                {
+                    int bytesCount = receivingSocket.ReceiveFrom(buffer, SocketFlags.None, ref endpoint);            
+                }
 
                 IPEndPoint? ipEndPoint = endpoint as IPEndPoint;
                 var packet = GetPacketFromBytes(buffer, ref ipEndPoint);
@@ -154,31 +141,27 @@ public abstract class BaseScanner : IDisposable
                 {
                     lock (this.taskSources[tcpPacket.SourcePort])
                     {
-                        System.Console.WriteLine($"Received TCP packet from port .{tcpPacket.SourcePort}. at time: {this.stopwatch.ElapsedMilliseconds}. Index: {index}");
+                        Debug.WriteLine($"Received TCP packet from port .{tcpPacket.SourcePort}. at time: {this.stopwatch.ElapsedMilliseconds}. Index: {index}");
                         var result = GetScanResultFromResponse(packet);
                         SetScanResult(result);
                     }
                 }
                 index++;
             }
-        }).Start();
+        }, listeningTcs.Token).Start();
     }
 
 
 
-    protected abstract void HandleTimeout(int port, bool retry);
+    protected abstract Task<ScanResult> HandleTimeout(int port, bool retry);
 
     protected abstract ScanResult GetScanResultFromResponse(Packet packet);
 
     public virtual void Dispose()
     {
-        if (isListening)
-        {
-            isListening = false;
-        }
+        
+        listeningTcs?.Cancel();
         sendingSocket?.Dispose();
-        //receivingSocket?.Dispose();
-
-
+        receivingSocket?.Dispose();
     }
 }
