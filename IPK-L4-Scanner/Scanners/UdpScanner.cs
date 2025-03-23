@@ -45,13 +45,10 @@ public class UdpScanner : BaseScanner
 
     protected override IcmpPacket? GetPacketFromBytes(byte[] responseBytes, ref IPEndPoint? remoteEndPoint)
     {
-            IcmpPacket? icmpPacket;
             if (remoteEndPoint == null)
                 return null;
 
-            // Verify response is from the target IP
-            icmpPacket = IcmpPacket.FromBytes(responseBytes, remoteEndPoint.Address, this.destinationIp);
-
+            IcmpPacket? icmpPacket = IcmpPacket.FromBytes(responseBytes, remoteEndPoint.Address, this.destinationIp);
             var udpPacket = icmpPacket?.GetOriginalUdpPacket();
 
             if (udpPacket == null || udpPacket.SourcePort != SOURCE_PORT || !this.GetScannedPortsCollection().Contains(udpPacket.DestinationPort))

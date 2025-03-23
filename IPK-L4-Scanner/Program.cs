@@ -14,7 +14,7 @@ class Program
     static async Task Main(string[] args)
     {
         //fe80::da44:89ff:fe62:1ffc%enp0s3"
-        using(BaseScanner scanner = new UdpScanner("enp0s3", IPAddress.Parse("10.0.0.138"), 2000, 50))
+        using(BaseScanner scanner = new TcpScanner("enp0s3", IPAddress.Parse("fe80::da44:89ff:fe62:1ffc%enp0s3"), 2000))
         {
             scanner.CreateSockets();
 
@@ -38,7 +38,7 @@ class Program
             Stopwatch watch = Stopwatch.StartNew();
 
             var tasks = new List<Task>();
-            for (int i = 65; i < 72; i++)
+            for (int i = 40; i < 10000; i++)
             {
                 tasks.Add(scanner.StartPortScanAsync(i)); 
             }
