@@ -14,50 +14,47 @@ class Program
     static async Task Main(string[] args)
     {
         //fe80::da44:89ff:fe62:1ffc%enp0s3"
-        using BaseScanner scanner = new TcpScanner("enp0s3", IPAddress.Parse("8.8.8.8"), 2000);
-        scanner.CreateSockets();
-
-        int filtered = 0;
-        int open = 0;
-        int closed = 0;
-        var filteredList = new ConcurrentQueue<int>();
-        scanner.ScanFinished += result => {
-            Console.WriteLine(result.Port + ", " + result.PortState);
-            if (result.PortState == PortState.Filtered)
-            {
-                filtered++;
-                filteredList.Enqueue(result.Port);
-            }
-            else if (result.PortState == PortState.Closed)
-                closed++;
-            else if (result.PortState == PortState.Open)
-                open++;
-        };
-
-        Stopwatch watch = Stopwatch.StartNew();
-
-        var tasks = new List<Task>();
-        for (int i = 0; i < 100; i++)
+        using(BaseScanner scanner = new UdpScanner("enp0s3", IPAddress.Parse("10.0.0.138"), 2000, 50))
         {
-            tasks.Add(scanner.StartPortScanAsync(i)); 
+            scanner.CreateSockets();
+
+            int filtered = 0;
+            int open = 0;
+            int closed = 0;
+            var filteredList = new ConcurrentQueue<int>();
+            scanner.ScanFinished += result => {
+                Console.WriteLine(result.Port + ", " + result.PortState);
+                if (result.PortState == PortState.Filtered)
+                {
+                    filtered++;
+                    filteredList.Enqueue(result.Port);
+                }
+                else if (result.PortState == PortState.Closed)
+                    closed++;
+                else if (result.PortState == PortState.Open)
+                    open++;
+            };
+
+            Stopwatch watch = Stopwatch.StartNew();
+
+            var tasks = new List<Task>();
+            for (int i = 65; i < 72; i++)
+            {
+                tasks.Add(scanner.StartPortScanAsync(i)); 
+            }
+
+            Task.WaitAll(tasks.ToArray());
+            System.Console.WriteLine($"Sending finished. Time: {watch.ElapsedMilliseconds}");
+
+            System.Console.WriteLine("Time: " + watch.ElapsedMilliseconds);
+            System.Console.WriteLine("Filtered count: " + filtered);
+            //foreach(var port in filteredList)
+            //  System.Console.Write(port + " ");
+            System.Console.WriteLine();
+            System.Console.WriteLine("Closed count: " + closed);
+            System.Console.WriteLine("Open count: " + open);
+            System.Console.WriteLine("Total count: " + (open + closed + filtered));
         }
-
-        Task.WaitAll(tasks.ToArray());
-        System.Console.WriteLine($"Sending finished. Time: {watch.ElapsedMilliseconds}");
-
-        // var tasks = scanner.GetScanningTasks();
-        // var arr = tasks.ToArray();
-        // Task.WaitAll(arr);
-
-
-        System.Console.WriteLine("Time: " + watch.ElapsedMilliseconds);
-        System.Console.WriteLine("Filtered count: " + filtered);
-        foreach(var port in filteredList)
-            System.Console.Write(port + " ");
-        System.Console.WriteLine();
-        System.Console.WriteLine("Closed count: " + closed);
-        System.Console.WriteLine("Open count: " + open);
-        System.Console.WriteLine("Total count: " + (open + closed + filtered));
     }
 }
 

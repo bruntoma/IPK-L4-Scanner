@@ -18,10 +18,8 @@ public abstract class BaseScanner : IDisposable
     protected IPacketFactory packetFactory;
     protected IPEndPoint sourceEndPoint;
     protected IPAddress destinationIp;
-    protected string interfaceName;
     protected int timeout;
 
-    protected int lastScannedPort = 0;
     protected ConcurrentDictionary<int, TaskCompletionSource<ScanResult>> taskSources = new ConcurrentDictionary<int, TaskCompletionSource<ScanResult>>();
     private CancellationTokenSource? listeningTcs = null;
 
@@ -38,7 +36,6 @@ public abstract class BaseScanner : IDisposable
 
         this.destinationIp = destinationIp;
         this.packetFactory = headerFactory;
-        this.interfaceName = interfaceName;
         this.timeout = timeout;
     }
 
@@ -78,25 +75,21 @@ public abstract class BaseScanner : IDisposable
     public virtual async Task<ScanResult> StartPortScanAsync(int port, bool retry = false)
     {
         if (sendingSocket is null || receivingSocket is null) throw new NullReferenceException("Sending socket cannot be null. Ensure CreateSockets() is called before ScanPort");
-        lastScannedPort = port;
 
         if (listeningTcs == null)
         {
-           StartListening();
+            StartListening();
         }
   
         try
         {
-            var packet = packetFactory.CreatePacket(sourceEndPoint, new IPEndPoint(destinationIp, port));
-            //Port is set to 0, because for some reason it is the only thing that works always
-            Debug.WriteLine($"Scanning: .{port}. time: {stopwatch.ElapsedMilliseconds}");
-
             var tcs = new TaskCompletionSource<ScanResult>();
             if (this.taskSources.TryAdd(port, tcs) == false && retry == false)
             {
                 throw new Exception($"Creating tcs for port .{port}. failed");
             }
 
+            var packet = packetFactory.CreatePacket(sourceEndPoint, new IPEndPoint(destinationIp, port));
             await sendingSocket.SendToAsync(packet, new IPEndPoint(destinationIp, 0));
 
             var completed = await Task.WhenAny(tcs.Task, Task.Delay(timeout));
@@ -113,8 +106,6 @@ public abstract class BaseScanner : IDisposable
         {
             throw new Exception("Error during starting port scan.", ex);
         }
-        finally{
-        }
     }
 
     public void StartListening()
@@ -125,23 +116,23 @@ public abstract class BaseScanner : IDisposable
         if (receivingSocket == null)
             return;
         int index = 0;
-        new Task(() => {
+        new Task(async () => {
             while(!listeningTcs.IsCancellationRequested)
             {
                 EndPoint endpoint = new IPEndPoint(IPAddress.Any, 0);
 
                 if (!listeningTcs.IsCancellationRequested)
                 {
-                    int bytesCount = receivingSocket.ReceiveFrom(buffer, SocketFlags.None, ref endpoint);            
+                    await receivingSocket.ReceiveFromAsync(buffer, SocketFlags.None, endpoint);            
                 }
 
                 IPEndPoint? ipEndPoint = endpoint as IPEndPoint;
                 var packet = GetPacketFromBytes(buffer, ref ipEndPoint);
-                if (packet is TcpPacket tcpPacket)
+
+                if ((packet is IcmpPacket || packet is TcpPacket) && ipEndPoint != null)
                 {
-                    lock (this.taskSources[tcpPacket.SourcePort])
+                    lock (this.taskSources[ipEndPoint.Port])
                     {
-                        Debug.WriteLine($"Received TCP packet from port .{tcpPacket.SourcePort}. at time: {this.stopwatch.ElapsedMilliseconds}. Index: {index}");
                         var result = GetScanResultFromResponse(packet);
                         SetScanResult(result);
                     }

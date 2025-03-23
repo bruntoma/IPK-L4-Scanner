@@ -49,58 +49,22 @@ public class TcpScanner : BaseScanner
 
     protected override TcpPacket? GetPacketFromBytes(byte[] responseBytes, ref IPEndPoint? remoteEndPoint)
     {
-
-        //TODO: DO NOT USE remoteEndPoint, it does not work!
-            TcpPacket? tcpHeader;
-            // IPPacket? ipHeader;
-
-            // if (remoteEndPoint == null)
-            //     return null;
-
-            // if (remoteEndPoint.Address.AddressFamily == AddressFamily.InterNetwork)
-            // {
-            //     ipHeader = IPv4Packet.FromBytes(responseBytes);
-            //     if (ipHeader == null || ipHeader.SourceIp == null || ipHeader.DestinationIp == null) 
-            //     {
-            //         return null;
-            //     }
-
-            //     // Verify response is from the target IP
-            //     if (!ipHeader.SourceIp.Equals(this.destinationIp)) 
-            //     {
-            //         return null;
-            //     }
-
-            //     //Verify response is sent to the source ip
-            //     if (!ipHeader.DestinationIp.Equals(this.sourceEndPoint.Address)) 
-            //     {
-            //         return null;
-            //     }
-
-            // }
-
-            tcpHeader = TcpPacket.FromBytes(responseBytes, remoteEndPoint.Address, this.sourceEndPoint.Address);
-
-            if (tcpHeader == null)
-                return null;
-
-            if (tcpHeader.DestinationPort != SOURCE_PORT)
-                return null;
+        if (remoteEndPoint == null)
+            return null;
 
 
-            
-            //The response is from scanned port
-            if (!this.GetScannedPortsCollection().Contains(tcpHeader.SourcePort))
-            {
-                System.Console.WriteLine($"Received but not contains: .{tcpHeader.SourcePort}. IsCompleted: {this.taskSources[tcpHeader.SourcePort].Task.IsCompleted}");
-                return null;
-            }
+        TcpPacket? tcpHeader;
+        tcpHeader = TcpPacket.FromBytes(responseBytes, remoteEndPoint.Address, this.sourceEndPoint.Address);
 
-            //System.Console.WriteLine($"Received: .{tcpHeader.SourcePort}. IsCompleted: {this.taskSources[tcpHeader.SourcePort].Task.IsCompleted}");
-            
+        if (tcpHeader == null || tcpHeader.DestinationPort != sourceEndPoint.Port)
+            return null;        
+        
+        if (!this.GetScannedPortsCollection().Contains(tcpHeader.SourcePort))
+            return null;
+        
 
-            remoteEndPoint = new IPEndPoint(tcpHeader.SourceIp, tcpHeader.SourcePort);
-            return tcpHeader;
+        remoteEndPoint = new IPEndPoint(tcpHeader.SourceIp, tcpHeader.SourcePort);
+        return tcpHeader;
     }
 
     protected override async Task<ScanResult> HandleTimeout(int port, bool retry)
@@ -108,14 +72,12 @@ public class TcpScanner : BaseScanner
         
         if (retry)
         {
-                //System.Console.WriteLine($"Timeouted: .{port}., IsCompleted: {taskSources[port].Task.IsCompleted}, Retry: {retry}, Time: {stopwatch.ElapsedMilliseconds}, RESULT: FILTERED");
                 var result = new ScanResult(port, PortState.Filtered);
                 SetScanResult(result);
                 return result;
         }
         else
         {
-            //System.Console.WriteLine($"Timeouted: .{port}., IsCompleted: {taskSources[port].Task.IsCompleted}, Retry: {retry}, Time: {stopwatch.ElapsedMilliseconds}");
             return await StartPortScanAsync(port, true);
         }
     }
