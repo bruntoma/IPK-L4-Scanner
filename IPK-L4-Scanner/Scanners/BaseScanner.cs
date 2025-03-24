@@ -25,30 +25,24 @@ public abstract class BaseScanner : IDisposable
     protected ConcurrentDictionary<int, TaskCompletionSource<ScanResult>> taskSources = new ConcurrentDictionary<int, TaskCompletionSource<ScanResult>>();
     private CancellationTokenSource? listeningTcs = null;
 
-    public delegate void ScanFinishedHandler(ScanResult result);
+    public delegate void ScanFinishedHandler(IPAddress target, ScanResult result);
     public event ScanFinishedHandler ScanFinished;
 
     private LibPcapLiveDevice device;
-
-    private string interfaceName;
-
-    public SemaphoreSlim semaphoreSlim;
-
-    public int lastScannedPort = -1;
-public object l = new object();
+    private SemaphoreSlim parallelScansSemaphore;
+    private const int MAX_PARALLEL_SCANS = 15;
 
     public Stopwatch stopwatch = Stopwatch.StartNew();
 
     protected BaseScanner(string interfaceName, IPAddress destinationIp, IPacketFactory headerFactory, int timeout)
     {
-        semaphoreSlim = new SemaphoreSlim(15);
+        parallelScansSemaphore = new SemaphoreSlim(MAX_PARALLEL_SCANS);
         var ip = GetIpOfInterface(interfaceName, destinationIp.AddressFamily, destinationIp.IsIPv6LinkLocal) ?? throw new Exception($"Could not find IPAddress of network interface ({interfaceName})");
         this.sourceEndPoint = new IPEndPoint(ip, SOURCE_PORT);
 
         this.destinationIp = destinationIp;
         this.packetFactory = headerFactory;
         this.timeout = timeout;
-        this.interfaceName = interfaceName;
     }
 
     public void CreateSockets(){
@@ -76,7 +70,7 @@ public object l = new object();
             if (!taskSources[result.Port].Task.IsCompleted)
             {
                 taskSources[result.Port].SetResult(result);
-                ScanFinished?.Invoke(result);
+                ScanFinished?.Invoke(destinationIp, result);
             }
         }
     }
@@ -90,7 +84,7 @@ public object l = new object();
     {
         if (retry == false)
         {
-          await semaphoreSlim.WaitAsync();
+          await parallelScansSemaphore.WaitAsync();
         }
 
         //Debug.WriteLine($"Sending {port}");
@@ -105,7 +99,6 @@ public object l = new object();
             }
 
             var packet = packetFactory.CreatePacket(sourceEndPoint, new IPEndPoint(destinationIp, port));
-            lastScannedPort = port;
             await sendingSocket.SendToAsync(packet, new IPEndPoint(destinationIp, 0));
 
             //System.Console.WriteLine("WAITING");
@@ -113,13 +106,13 @@ public object l = new object();
             if (completed == tcs.Task)
             {
                 //System.Console.WriteLine("CLOSED");
-                semaphoreSlim?.Release();
+                parallelScansSemaphore?.Release();
                 return tcs.Task.Result;
             }
             else
             {
                 //System.Console.WriteLine("Timeout");
-                semaphoreSlim?.Release();
+                parallelScansSemaphore?.Release();
                 return await HandleTimeout(port, retry);
             }
         }
@@ -141,7 +134,7 @@ public object l = new object();
             while(!listeningTcs.IsCancellationRequested)
             {
                 EndPoint endpoint = new IPEndPoint(IPAddress.Any, 0);
-                await receivingSocket.ReceiveMessageFromAsync(buffer, SocketFlags.None, endpoint); 
+                await receivingSocket.ReceiveFromAsync(buffer, SocketFlags.None, endpoint); 
 
                 
                 IPEndPoint? ipEndPoint = endpoint as IPEndPoint;

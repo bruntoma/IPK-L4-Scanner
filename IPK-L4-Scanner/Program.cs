@@ -4,6 +4,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Text;
+using static IPK_L4_Scanner.BaseScanner;
 
 namespace IPK_L4_Scanner;
 
@@ -18,7 +19,7 @@ class Program
         //fe80::da44:89ff:fe62:1ffc%enp0s3"
         string target = "scanme.nmap.org";
         int portMin = 0;
-        int portMax = 300;
+        int portMax = 20000;
 
 
         int filtered = 0;
@@ -32,7 +33,9 @@ class Program
         foreach(var address in addresses)
         {
             var tcpScanner = new TcpScanner(device, address, timeout);
+            tcpScanner.ScanFinished += PrintScanResult;
             tcpScanner.CreateSockets();
+
             
             var tasks = new List<Task<ScanResult>>();
             for (int i = portMin; i <= portMax; i++)
@@ -44,7 +47,6 @@ class Program
             {
                 var completed = await Task.WhenAny(tasks);
                 var result = await completed;
-                Console.WriteLine("[X]: " + address + ": " + ((int)result.Port).ToString() + ", " + result.PortState);
 
                 //Statistics
                 if (result.PortState == PortState.Filtered)
@@ -60,19 +62,25 @@ class Program
                 tasks.Remove(completed);
             }
 
-           
+            tcpScanner.ScanFinished -= PrintScanResult;
+            tcpScanner.Dispose();
         }
 
         System.Console.WriteLine($"Scanning finished. Time: {watch.ElapsedMilliseconds}");
 
         System.Console.WriteLine("Time: " + watch.ElapsedMilliseconds);
         System.Console.WriteLine("Filtered count: " + filtered);
-        //foreach(var port in filteredList)
-        //  System.Console.Write(port + " ");
+        foreach(var port in filteredList)
+          System.Console.Write(port + " ");
         System.Console.WriteLine();
         System.Console.WriteLine("Closed count: " + closed);
         System.Console.WriteLine("Open count: " + open);
         System.Console.WriteLine("Total count: " + (open + closed + filtered));
+    }
+
+    public static void PrintScanResult(IPAddress target, ScanResult result)
+    {
+        Console.WriteLine("[X]: " + target + ": " + ((int)result.Port).ToString() + ", " + result.PortState);
     }
 }
 

@@ -42,10 +42,6 @@ public class UdpScanner : BaseScanner
     public override Socket CreateSendingSocket()
     {
         var sendingSocket = new Socket(destinationIp.AddressFamily, SocketType.Raw, ProtocolType.Udp);
-        if (destinationIp.AddressFamily == AddressFamily.InterNetwork)
-        {
-           // sendingSocket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.HeaderIncluded, true);
-        }
         return sendingSocket;
     }
 

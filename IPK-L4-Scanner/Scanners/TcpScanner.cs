@@ -14,12 +14,6 @@ public class TcpScanner : BaseScanner
     public override Socket CreateSendingSocket()
     {
         var sendingSocket = new Socket(destinationIp.AddressFamily, SocketType.Raw, ProtocolType.Tcp);
-        if (destinationIp.AddressFamily == AddressFamily.InterNetwork)
-        {
-            //sendingSocket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.HeaderIncluded, false);
-        }
-
-
         return sendingSocket;
     }
 
