@@ -16,16 +16,13 @@ public class UdpScanner : BaseScanner
 
         //Releases semaphore in intervals
         rateLimitTimer = new Timer(_ => { 
-            //System.Console.WriteLine("Releasing semaphore");
             rateLimitSemaphore.Release(); 
         }, null, 0, period);
     }
 
     public override async Task<ScanResult> StartPortScanAsync(int port, bool retry = false)
     {
-        //System.Console.WriteLine("WAITING SEMAPHORE");
         await rateLimitSemaphore.WaitAsync();
-        //System.Console.WriteLine("STARTING SCAN");
         var result = await base.StartPortScanAsync(port, retry);
 
         return result;

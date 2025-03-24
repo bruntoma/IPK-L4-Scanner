@@ -120,30 +120,40 @@ public abstract class BaseScanner : IDisposable
     }
 
     public void StartListening()
-    {
+    {   
+
         listeningTcs = new CancellationTokenSource();
 
         byte[] buffer = new byte[256];
         if (receivingSocket == null)
             return;
 
+
         new Task(async () => {
             while(!listeningTcs.IsCancellationRequested)
             {
-                EndPoint endpoint = new IPEndPoint(IPAddress.Any, 0);
-                await receivingSocket.ReceiveFromAsync(buffer, SocketFlags.None, endpoint); 
+                try {
+                    EndPoint endpoint = new IPEndPoint(IPAddress.Any, 0);
+                    await receivingSocket.ReceiveFromAsync(buffer, SocketFlags.None, endpoint); 
+                    
+                    IPEndPoint? ipEndPoint = endpoint as IPEndPoint;
+                    var packet = GetPacketFromBytes(buffer, ref ipEndPoint);
 
-                
-                IPEndPoint? ipEndPoint = endpoint as IPEndPoint;
-                var packet = GetPacketFromBytes(buffer, ref ipEndPoint);
-
-                if ((packet is IcmpPacket || packet is TcpPacket) && ipEndPoint != null)
-                {
-                    lock (this.taskSources[ipEndPoint.Port])
+                    if ((packet is IcmpPacket || packet is TcpPacket) && ipEndPoint != null)
                     {
-                        var result = GetScanResultFromResponse(packet);
-                        SetScanResult(result);
+                        lock (this.taskSources[ipEndPoint.Port])
+                        {
+                            var result = GetScanResultFromResponse(packet);
+                            SetScanResult(result);
+                        }
                     }
+                }
+                catch (SocketException ex) when (
+                    ex.SocketErrorCode == SocketError.OperationAborted || 
+                    ex.SocketErrorCode == SocketError.Interrupted ||
+                    ex.SocketErrorCode == SocketError.Shutdown)
+                {
+                    break;
                 }
             }
         }, listeningTcs.Token).Start();

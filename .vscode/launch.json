@@ -1,0 +1,20 @@
+{ 
+    "configurations": [
+        {
+            "name": "L4 Scanner - TCP Scan",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/IPK-L4-Scanner/bin/Debug/net8.0/IPK-L4-Scanner.dll",
+            "args": [
+                "-i", "enp0s3", 
+                "-t", "22,80,443", 
+                "-w", "2000", 
+                "scanme.nmap.org"
+            ],
+            "cwd": "${workspaceFolder}",
+            "console": "internalConsole",
+            "stopAtEntry": false
+        }
+    ]
+}

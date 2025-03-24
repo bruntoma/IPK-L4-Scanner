@@ -14,8 +14,6 @@
         "bin": true,
         "**/~": true,
         "~": true,
-        "**/.vscode": true,
-        ".vscode": true
     },
     "explorerExclude.backup": {}
 }
