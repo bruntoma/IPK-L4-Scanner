@@ -46,7 +46,7 @@ public class IcmpPacket : Packet
     // Calculate ICMP header offset
     // For IPv4, offset is the IP header length
     // For IPv6, we receive only the ICMP header (offset 0)
-    int icmpHeaderOffset = (sourceIp.AddressFamily == AddressFamily.InterNetwork) ? (packet[0] & 0x0F) * 4 : 0;
+    int icmpHeaderOffset = (destinationIp.AddressFamily == AddressFamily.InterNetwork) ? (packet[0] & 0x0F) * 4 : 0;
     
     // Extract ICMP fields
     byte type = packet[icmpHeaderOffset];

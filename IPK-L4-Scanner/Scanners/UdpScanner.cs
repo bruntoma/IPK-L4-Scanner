@@ -7,6 +7,7 @@ public class UdpScanner : BaseScanner
 {
     private SemaphoreSlim rateLimitSemaphore = new(0);
     private int packetsPerSecond;
+    private Timer rateLimitTimer;
 
     public UdpScanner(string interfaceName, IPAddress destinationIp, int timeout = 5000, int packetsPerSecond = 1) : base(interfaceName, destinationIp, new UdpPacketFactory(), timeout)
     {
@@ -14,12 +15,17 @@ public class UdpScanner : BaseScanner
         int period = 1000 / packetsPerSecond;
 
         //Releases semaphore in intervals
-        Timer rateLimitTimer = new Timer(_ => { rateLimitSemaphore.Release(); }, null, 0, period);
+        rateLimitTimer = new Timer(_ => { 
+            //System.Console.WriteLine("Releasing semaphore");
+            rateLimitSemaphore.Release(); 
+        }, null, 0, period);
     }
 
     public override async Task<ScanResult> StartPortScanAsync(int port, bool retry = false)
     {
+        //System.Console.WriteLine("WAITING SEMAPHORE");
         await rateLimitSemaphore.WaitAsync();
+        //System.Console.WriteLine("STARTING SCAN");
         var result = await base.StartPortScanAsync(port, retry);
 
         return result;
@@ -48,10 +54,10 @@ public class UdpScanner : BaseScanner
             if (remoteEndPoint == null)
                 return null;
 
-            IcmpPacket? icmpPacket = IcmpPacket.FromBytes(responseBytes, remoteEndPoint.Address, this.destinationIp);
+            IcmpPacket? icmpPacket = IcmpPacket.FromBytes(responseBytes, remoteEndPoint.Address, this.sourceEndPoint.Address);
             var udpPacket = icmpPacket?.GetOriginalUdpPacket();
 
-            if (udpPacket == null || udpPacket.SourcePort != SOURCE_PORT || !this.GetScannedPortsCollection().Contains(udpPacket.DestinationPort))
+            if (udpPacket == null || udpPacket.SourcePort != this.sourceEndPoint.Port || !this.GetScannedPortsCollection().Contains(udpPacket.DestinationPort))
             {
                 remoteEndPoint = null;
                 return null;

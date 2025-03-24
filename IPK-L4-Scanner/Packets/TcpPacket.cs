@@ -22,13 +22,13 @@ public class TcpPacket : Packet
     public ushort DestinationPort { get; private set; }
     public ushort Checksum { get; private set; }
 
-    public IPAddress SourceIp {get; private set; }
-    public IPAddress DestinationIp {get; private set; }
+    public IPAddress? SourceIp {get; private set; }
+    public IPAddress? DestinationIp {get; private set; }
 
     public TcpFlags Flags {get; private set;} = 0;
 
 
-    public TcpPacket(IPAddress sourceIp, IPAddress destinationIp, ushort sourcePort, ushort destinationPort, TcpFlags flags = 0) : base(Packet.DEFAULT_TCP_Length)
+    public TcpPacket(IPAddress? sourceIp, IPAddress? destinationIp, ushort sourcePort, ushort destinationPort, TcpFlags flags = 0) : base(Packet.DEFAULT_TCP_Length)
     {
         this.SourceIp = sourceIp;
         this.DestinationIp = destinationIp;
@@ -73,15 +73,19 @@ public class TcpPacket : Packet
         this.Bytes[18] = 0x00; 
         this.Bytes[19] = 0x00;
 
-         // Calculate checksum.
-        byte[] pseudoHeader = CreatePseudoHeader(SourceIp, DestinationIp, 20);
-        byte[] checksumData = new byte[pseudoHeader.Length + this.Bytes.Length];
-        Array.Copy(pseudoHeader, 0, checksumData, 0, pseudoHeader.Length);
-        Array.Copy(this.Bytes, 0, checksumData, pseudoHeader.Length, this.Bytes.Length);
 
-        ushort checksum = CalculateChecksum(checksumData, 0, checksumData.Length);
-        this.Bytes[16] = (byte)(checksum >> 8);
-        this.Bytes[17] = (byte)(checksum & 0xFF);
+        if (sourceIp != null && destinationIp != null)
+        {
+            // Calculate checksum.
+            byte[] pseudoHeader = CreatePseudoHeader(SourceIp, DestinationIp, 20);
+            byte[] checksumData = new byte[pseudoHeader.Length + this.Bytes.Length];
+            Array.Copy(pseudoHeader, 0, checksumData, 0, pseudoHeader.Length);
+            Array.Copy(this.Bytes, 0, checksumData, pseudoHeader.Length, this.Bytes.Length);
+
+            ushort checksum = CalculateChecksum(checksumData, 0, checksumData.Length);
+            this.Bytes[16] = (byte)(checksum >> 8);
+            this.Bytes[17] = (byte)(checksum & 0xFF);
+        }
     }
 
     private static byte[] CreatePseudoHeader(IPAddress sourceIp, IPAddress destinationIp, int tcpLength)
@@ -131,21 +135,21 @@ public class TcpPacket : Packet
         }
     }
 
-    public static TcpPacket? FromBytes(byte[] packet, IPAddress sourceIp, IPAddress destinationIp)
+    public static TcpPacket? FromBytes(byte[] packet, bool isIpv4)
     {
-        if (packet.Length < DEFAULT_IPv4_Length + DEFAULT_TCP_Length)
+        if (packet.Length < DEFAULT_TCP_Length)
         {
             Console.WriteLine("Packet too short to parse TCP header.");
             return null;
         }
-        
-        // Ip header length (when receiving ipv6, we receive only the tcp header)
-        int tcpHeaderOffset = (sourceIp.AddressFamily == AddressFamily.InterNetwork) ? (packet[0] & 0x0F) * 4 : 0; 
+    
+        int tcpHeaderOffset = (isIpv4) ? 20 : 0;
         ushort sourcePort = (ushort)((packet[tcpHeaderOffset] << 8) | packet[tcpHeaderOffset + 1]);
         ushort destinationPort = (ushort)((packet[tcpHeaderOffset + 2] << 8) | packet[tcpHeaderOffset + 3]);
+        
         TcpFlags flags = (TcpFlags)packet[tcpHeaderOffset + 13];
-
-        return new TcpPacket(sourceIp, destinationIp, sourcePort, destinationPort, flags);
+        
+        return new TcpPacket(null, null, sourcePort, destinationPort, flags);
     }
 
     public bool IsAck()

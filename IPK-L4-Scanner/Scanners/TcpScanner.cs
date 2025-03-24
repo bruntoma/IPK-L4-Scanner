@@ -16,7 +16,7 @@ public class TcpScanner : BaseScanner
         var sendingSocket = new Socket(destinationIp.AddressFamily, SocketType.Raw, ProtocolType.Tcp);
         if (destinationIp.AddressFamily == AddressFamily.InterNetwork)
         {
-            sendingSocket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.HeaderIncluded, false);
+            //sendingSocket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.HeaderIncluded, false);
         }
 
 
@@ -34,7 +34,6 @@ public class TcpScanner : BaseScanner
     {
         var tcpHeader = packet as TcpPacket;
         if (tcpHeader is null) { throw new NullReferenceException("Received packet is not a TCP packet. Wrong packets should not be returned from GetPacketFromBytes");};
-
         if (tcpHeader.IsReset())
         {
             return new ScanResult(tcpHeader.SourcePort, PortState.Closed);
@@ -50,21 +49,30 @@ public class TcpScanner : BaseScanner
     protected override TcpPacket? GetPacketFromBytes(byte[] responseBytes, ref IPEndPoint? remoteEndPoint)
     {
         if (remoteEndPoint == null)
+        {
             return null;
-
-       
+        }
 
         TcpPacket? tcpHeader;
-        tcpHeader = TcpPacket.FromBytes(responseBytes, remoteEndPoint.Address, this.sourceEndPoint.Address);
+        tcpHeader = TcpPacket.FromBytes(responseBytes, this.sourceEndPoint.AddressFamily == AddressFamily.InterNetwork);
 
-        if (tcpHeader == null || tcpHeader.DestinationPort != sourceEndPoint.Port)
+        if (tcpHeader == null )
+        {
             return null;        
+        }
+
+        if (tcpHeader.DestinationPort != sourceEndPoint.Port)
+        {
+            return null;
+        }
         
         if (!this.GetScannedPortsCollection().Contains(tcpHeader.SourcePort))
+        {
             return null;
+        }
         
 
-        remoteEndPoint = new IPEndPoint(tcpHeader.SourceIp, tcpHeader.SourcePort);
+        remoteEndPoint = new IPEndPoint(remoteEndPoint.Address, tcpHeader.SourcePort);
         return tcpHeader;
     }
 

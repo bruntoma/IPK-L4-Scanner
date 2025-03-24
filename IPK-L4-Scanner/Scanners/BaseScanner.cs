@@ -34,12 +34,14 @@ public abstract class BaseScanner : IDisposable
 
     public SemaphoreSlim semaphoreSlim;
 
+    public int lastScannedPort = -1;
+public object l = new object();
 
     public Stopwatch stopwatch = Stopwatch.StartNew();
 
     protected BaseScanner(string interfaceName, IPAddress destinationIp, IPacketFactory headerFactory, int timeout)
     {
-        semaphoreSlim = new SemaphoreSlim(5000);
+        semaphoreSlim = new SemaphoreSlim(15);
         var ip = GetIpOfInterface(interfaceName, destinationIp.AddressFamily, destinationIp.IsIPv6LinkLocal) ?? throw new Exception($"Could not find IPAddress of network interface ({interfaceName})");
         this.sourceEndPoint = new IPEndPoint(ip, SOURCE_PORT);
 
@@ -88,7 +90,7 @@ public abstract class BaseScanner : IDisposable
     {
         if (retry == false)
         {
-            await semaphoreSlim.WaitAsync();
+          await semaphoreSlim.WaitAsync();
         }
 
         //Debug.WriteLine($"Sending {port}");
@@ -103,20 +105,22 @@ public abstract class BaseScanner : IDisposable
             }
 
             var packet = packetFactory.CreatePacket(sourceEndPoint, new IPEndPoint(destinationIp, port));
+            lastScannedPort = port;
             await sendingSocket.SendToAsync(packet, new IPEndPoint(destinationIp, 0));
 
+            //System.Console.WriteLine("WAITING");
             var completed = await Task.WhenAny(tcs.Task, Task.Delay(timeout));
             if (completed == tcs.Task)
             {
+                //System.Console.WriteLine("CLOSED");
                 semaphoreSlim?.Release();
                 return tcs.Task.Result;
             }
             else
             {
-                semaphoreSlim?.Release(1);
-                    
-                var result =  await HandleTimeout(port, retry);
-                return result;
+                //System.Console.WriteLine("Timeout");
+                semaphoreSlim?.Release();
+                return await HandleTimeout(port, retry);
             }
         }
         catch (Exception ex)
@@ -129,16 +133,17 @@ public abstract class BaseScanner : IDisposable
     {
         listeningTcs = new CancellationTokenSource();
 
-        byte[] buffer = new byte[1024];
+        byte[] buffer = new byte[256];
         if (receivingSocket == null)
             return;
-        int index = 0;
+
         new Task(async () => {
             while(!listeningTcs.IsCancellationRequested)
             {
                 EndPoint endpoint = new IPEndPoint(IPAddress.Any, 0);
-                await receivingSocket.ReceiveMessageFromAsync(buffer, SocketFlags.None, endpoint);            
+                await receivingSocket.ReceiveMessageFromAsync(buffer, SocketFlags.None, endpoint); 
 
+                
                 IPEndPoint? ipEndPoint = endpoint as IPEndPoint;
                 var packet = GetPacketFromBytes(buffer, ref ipEndPoint);
 
@@ -150,47 +155,8 @@ public abstract class BaseScanner : IDisposable
                         SetScanResult(result);
                     }
                 }
-                index++;
             }
         }, listeningTcs.Token).Start();
-         
-
-        // LibPcapLiveDevice? device = LibPcapLiveDeviceList.Instance.FirstOrDefault(device => device.Name.Contains(this.interfaceName));
-
-        // if (device == null)
-        // {
-        //     throw new Exception("Device not found");
-        // }
-
-    
-
-        // device.OnPacketArrival += (sender, capture) => {
-        //     var buffer = capture.Data.ToArray();
-        //     int headerSize = 0;
-
-        //     // Create new buffer without the header
-        //     buffer = buffer.Skip(14).ToArray();
-
-        //     EndPoint endpoint = new IPEndPoint(IPAddress.Any, 0);
-        //     IPEndPoint? ipEndPoint = endpoint as IPEndPoint;
-        //     var packet = GetPacketFromBytes(buffer, ref ipEndPoint);
-
-        //     if ((packet is IcmpPacket || packet is TcpPacket) && ipEndPoint != null)
-        //     {
-        //             var result = GetScanResultFromResponse(packet);
-        //             SetScanResult(result);
-        //     }
-        // };
-
-        // device.Open(DeviceModes.Promiscuous | DeviceModes.MaxResponsiveness);
-        // device.Filter = $"tcp and src host {destinationIp} and dst port {sourceEndPoint.Port} and dst host {sourceEndPoint.Address}";
-
-        // device.StartCapture();
-    }
-
-    private void a(object sender, PacketCapture e)
-    {
-        throw new NotImplementedException();
     }
 
     protected abstract Task<ScanResult> HandleTimeout(int port, bool retry);
