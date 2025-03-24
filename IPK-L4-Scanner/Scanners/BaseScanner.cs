@@ -32,18 +32,14 @@ public abstract class BaseScanner : IDisposable
     private const int MAX_PARALLEL_SCANS = 15;
 
     public Stopwatch stopwatch = Stopwatch.StartNew();
+
+    public NetworkHelper NetworkHelper { get; init; } = new NetworkHelper();
+
     protected BaseScanner(string interfaceName, IPAddress destinationIp, IPacketFactory headerFactory, int timeout)
     {
-        //Socket for finding out local(source) ip
-        var ipDeterminationSocket = new Socket(destinationIp.AddressFamily, SocketType.Dgram, ProtocolType.Unspecified);
-        ipDeterminationSocket.Connect(destinationIp.ToString(), 258);
-        var ip = ipDeterminationSocket.LocalEndPoint as IPEndPoint;
-        if (ip == null)
-            throw new Exception("Could not determine source IP address");
-
-
         parallelScansSemaphore = new SemaphoreSlim(MAX_PARALLEL_SCANS);
-        this.sourceEndPoint = new IPEndPoint(ip.Address, SOURCE_PORT);
+        var ip = NetworkHelper.GetIpOfInterface(interfaceName, destinationIp.AddressFamily, destinationIp.IsIPv6LinkLocal) ?? throw new Exception($"Could not find IPAddress of network interface ({interfaceName})");
+        this.sourceEndPoint = new IPEndPoint(ip, SOURCE_PORT);
 
         this.destinationIp = destinationIp;
         this.packetFactory = headerFactory;
