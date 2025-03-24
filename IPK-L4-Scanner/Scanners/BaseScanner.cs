@@ -6,7 +6,6 @@ using System.Runtime.InteropServices;
 using IPK_L4_Scanner.Packets;
 using SharpPcap;
 using SharpPcap.LibPcap;
-using static IPK_L4_Scanner.NetworkExtensions;
 
 namespace IPK_L4_Scanner;
 
@@ -33,12 +32,18 @@ public abstract class BaseScanner : IDisposable
     private const int MAX_PARALLEL_SCANS = 15;
 
     public Stopwatch stopwatch = Stopwatch.StartNew();
-
     protected BaseScanner(string interfaceName, IPAddress destinationIp, IPacketFactory headerFactory, int timeout)
     {
+        //Socket for finding out local(source) ip
+        var ipDeterminationSocket = new Socket(destinationIp.AddressFamily, SocketType.Dgram, ProtocolType.Unspecified);
+        ipDeterminationSocket.Connect(destinationIp.ToString(), 258);
+        var ip = ipDeterminationSocket.LocalEndPoint as IPEndPoint;
+        if (ip == null)
+            throw new Exception("Could not determine source IP address");
+
+
         parallelScansSemaphore = new SemaphoreSlim(MAX_PARALLEL_SCANS);
-        var ip = GetIpOfInterface(interfaceName, destinationIp.AddressFamily, destinationIp.IsIPv6LinkLocal) ?? throw new Exception($"Could not find IPAddress of network interface ({interfaceName})");
-        this.sourceEndPoint = new IPEndPoint(ip, SOURCE_PORT);
+        this.sourceEndPoint = new IPEndPoint(ip.Address, SOURCE_PORT);
 
         this.destinationIp = destinationIp;
         this.packetFactory = headerFactory;
@@ -87,7 +92,6 @@ public abstract class BaseScanner : IDisposable
           await parallelScansSemaphore.WaitAsync();
         }
 
-        //Debug.WriteLine($"Sending {port}");
         if (sendingSocket is null || receivingSocket is null) throw new NullReferenceException("Sending socket cannot be null. Ensure CreateSockets() is called before ScanPort");
   
         try
@@ -101,17 +105,14 @@ public abstract class BaseScanner : IDisposable
             var packet = packetFactory.CreatePacket(sourceEndPoint, new IPEndPoint(destinationIp, port));
             await sendingSocket.SendToAsync(packet, new IPEndPoint(destinationIp, 0));
 
-            //System.Console.WriteLine("WAITING");
             var completed = await Task.WhenAny(tcs.Task, Task.Delay(timeout));
             if (completed == tcs.Task)
             {
-                //System.Console.WriteLine("CLOSED");
                 parallelScansSemaphore?.Release();
                 return tcs.Task.Result;
             }
             else
             {
-                //System.Console.WriteLine("Timeout");
                 parallelScansSemaphore?.Release();
                 return await HandleTimeout(port, retry);
             }

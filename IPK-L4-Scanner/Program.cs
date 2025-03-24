@@ -14,12 +14,13 @@ class Program
 
     static async Task Main(string[] args)
     {
+
         int timeout = 2000;
         string device = "enp0s3";
         //fe80::da44:89ff:fe62:1ffc%enp0s3"
-        string target = "scanme.nmap.org";
+        string target = "10.0.0.138";
         int portMin = 0;
-        int portMax = 20000;
+        int portMax = 500;
 
 
         int filtered = 0;
@@ -32,7 +33,7 @@ class Program
         Stopwatch watch = Stopwatch.StartNew();
         foreach(var address in addresses)
         {
-            var tcpScanner = new TcpScanner(device, address, timeout);
+            var tcpScanner = new UdpScanner(device, address, timeout);
             tcpScanner.ScanFinished += PrintScanResult;
             tcpScanner.CreateSockets();
 
