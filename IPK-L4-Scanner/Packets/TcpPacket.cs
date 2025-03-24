@@ -74,7 +74,7 @@ public class TcpPacket : Packet
         this.Bytes[19] = 0x00;
 
 
-        if (sourceIp != null && destinationIp != null)
+        if (SourceIp != null && DestinationIp != null)
         {
             // Calculate checksum.
             byte[] pseudoHeader = CreatePseudoHeader(SourceIp, DestinationIp, 20);
@@ -92,7 +92,7 @@ public class TcpPacket : Packet
     {
         if (sourceIp.AddressFamily == AddressFamily.InterNetwork)
         {
-            // IPv4 pseudo-header (12 bytes)
+            // IPv4 pseudo-header
             byte[] header = new byte[12];
             Array.Copy(sourceIp.GetAddressBytes(), 0, header, 0, 4);
             Array.Copy(destinationIp.GetAddressBytes(), 0, header, 4, 4);

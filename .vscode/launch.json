@@ -8,7 +8,7 @@
             "program": "${workspaceFolder}/IPK-L4-Scanner/bin/Debug/net8.0/IPK-L4-Scanner.dll",
             "args": [
                 "-i", "enp0s3", 
-                "-t", "22,80,443", 
+                "-u", "1-10,443", 
                 "-w", "2000", 
                 "scanme.nmap.org"
             ],

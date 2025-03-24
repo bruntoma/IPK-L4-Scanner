@@ -6,8 +6,6 @@ using IPK_L4_Scanner.Packets;
 public class UdpScanner : BaseScanner
 {
     private SemaphoreSlim rateLimitSemaphore = new(0);
-    private int packetsPerSecond;
-    private Timer rateLimitTimer;
 
     public UdpScanner(string interfaceName, IPAddress destinationIp, int timeout = 5000, int packetsPerSecond = 1) : base(interfaceName, destinationIp, new UdpPacketFactory(), timeout)
     {
@@ -15,7 +13,7 @@ public class UdpScanner : BaseScanner
         int period = 1000 / packetsPerSecond;
 
         //Releases semaphore in intervals
-        rateLimitTimer = new Timer(_ => { 
+        var rateLimitTimer = new Timer(_ => { 
             rateLimitSemaphore.Release(); 
         }, null, 0, period);
     }
@@ -68,7 +66,6 @@ public class UdpScanner : BaseScanner
 
     protected override ScanResult GetScanResultFromResponse(Packet packet)
     {
-        //We do not have to extract the original packet from ICMP packet to get port, because UDP scanning in sequential.
         var icmpPacket = packet as IcmpPacket;
         if (icmpPacket is null) { throw new NullReferenceException("Received packet is not a ICMP packet. Wrong packets should not be returned from GetPacketFromBytes");};
 

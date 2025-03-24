@@ -2,10 +2,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
-using System.Runtime.InteropServices;
 using IPK_L4_Scanner.Packets;
-using SharpPcap;
-using SharpPcap.LibPcap;
 
 namespace IPK_L4_Scanner;
 
@@ -26,8 +23,6 @@ public abstract class BaseScanner : IDisposable
 
     public delegate void ScanFinishedHandler(IPAddress target, ScanResult result);
     public event ScanFinishedHandler ScanFinished;
-
-    private LibPcapLiveDevice device;
     private SemaphoreSlim parallelScansSemaphore;
     private const int MAX_PARALLEL_SCANS = 15;
 
@@ -38,7 +33,7 @@ public abstract class BaseScanner : IDisposable
     protected BaseScanner(string interfaceName, IPAddress destinationIp, IPacketFactory headerFactory, int timeout)
     {
         parallelScansSemaphore = new SemaphoreSlim(MAX_PARALLEL_SCANS);
-        var ip = NetworkHelper.GetIpOfInterface(interfaceName, destinationIp.AddressFamily, destinationIp.IsIPv6LinkLocal) ?? throw new Exception($"Could not find IPAddress of network interface ({interfaceName})");
+        var ip = NetworkHelper.GetIpOfInterface(interfaceName, destinationIp.AddressFamily, destinationIp.IsIPv6LinkLocal) ?? throw new Exception($"Could not find IPAddress of selected network interface ({interfaceName})");
         this.sourceEndPoint = new IPEndPoint(ip, SOURCE_PORT);
 
         this.destinationIp = destinationIp;
@@ -165,11 +160,8 @@ public abstract class BaseScanner : IDisposable
 
     public virtual void Dispose()
     {
-        
         listeningTcs?.Cancel();
         sendingSocket?.Dispose();
         receivingSocket?.Dispose();
-        device?.StopCapture();
-        device?.Dispose();
     }
 }

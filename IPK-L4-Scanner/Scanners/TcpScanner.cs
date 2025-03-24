@@ -8,7 +8,7 @@ public class TcpScanner : BaseScanner
 
     public TcpScanner(string interfaceName, IPAddress destinationIp, int timeout = 5000) : base(interfaceName, destinationIp, new PacketFactory(), timeout)
     {
-
+        
     }
 
     public override Socket CreateSendingSocket()

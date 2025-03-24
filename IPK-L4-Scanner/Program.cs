@@ -1,6 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net;
+using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -8,6 +9,11 @@ using CommandLine;
 using static IPK_L4_Scanner.BaseScanner;
 
 namespace IPK_L4_Scanner;
+
+public enum ScannerType {
+    Udp,
+    Tcp
+}
 
 public class CommandLineOptions
 {
@@ -29,47 +35,68 @@ public class CommandLineOptions
 
 class Program
 {
+
     static async Task Main(string[] args)
     {
 
         await Parser.Default.ParseArguments<CommandLineOptions>(args)
             .WithParsedAsync(async options =>
             {
-                if (options.Interface == null || options.Target == null || options.TcpPorts == null)
-                {
-                    System.Console.WriteLine("Args error");
-                    return;
-                }
+                try 
+                {                
+                    if (options.Interface == null)
+                    {
+                        System.Console.WriteLine("Available interfaces:");
+                        System.Console.WriteLine("---------------------");
+                        var interfaces = NetworkInterface.GetAllNetworkInterfaces();
+                        foreach (var i in interfaces)
+                        {
+                            System.Console.WriteLine(i.Name);
+                        }
+                        return;
+                    }
 
-                await RunTcpScan(options.Interface, options.Target, ParsePorts(options.TcpPorts), options.Timeout);
+                    if (options.Target == null)
+                    {
+                        System.Console.WriteLine("Target not specified");
+                        return;
+                    }
+
+                    if (options.TcpPorts != null)
+                        await RunScan(options.Interface, options.Target, ParsePorts(options.TcpPorts), options.Timeout, ScannerType.Tcp);
+
+                    if (options.UdpPorts != null)
+                        await RunScan(options.Interface, options.Target, ParsePorts(options.UdpPorts), options.Timeout, ScannerType.Udp);
+                }
+                catch(Exception e)
+                {
+                    System.Console.WriteLine(e.Message);
+                }
             });
 
         //fe80::da44:89ff:fe62:1ffc%enp0s3"
     }
 
-    public static async Task RunTcpScan(string deviceName, string target, IEnumerable<int> ports, int timeout)
+    public static async Task RunScan(string deviceName, string target, IEnumerable<int> ports, int timeout, ScannerType scannerType)
     {
-        string device = "enp0s3";
         var addresses = await Dns.GetHostAddressesAsync(target);
-
 
         foreach (var address in addresses)
         {
-            var tcpScanner = new UdpScanner(device, address, timeout);
-            tcpScanner.ScanFinished += PrintScanResult;
-            tcpScanner.CreateSockets();
+            BaseScanner scanner = (scannerType == ScannerType.Tcp) ? new TcpScanner(deviceName, address, timeout) : new UdpScanner(deviceName, address, timeout);
+            scanner.CreateSockets();
 
-
-            var tasks = new List<Task<ScanResult>>();
+            var tasks = new List<Task>();
             foreach (var port in ports)
             {
-                tasks.Add(tcpScanner.StartPortScanAsync(port));
+                tasks.Add(scanner.StartPortScanAsync(port).ContinueWith(result => PrintScanResult(address, result.Result)));
             }
+
             await Task.WhenAll(tasks);
-            tcpScanner.ScanFinished -= PrintScanResult;
-            tcpScanner.Dispose();
-        }
+            scanner.Dispose();
+        }  
     }
+
 
      private static IEnumerable<int> ParsePorts(string portRanges)
     {
@@ -106,7 +133,7 @@ class Program
 
     public static void PrintScanResult(IPAddress target, ScanResult result)
     {
-        Console.WriteLine("[X]: " + target + ": " + ((int)result.Port).ToString() + ", " + result.PortState);
+        Console.WriteLine(target + " " + result.Port + " " + result.PortState.ToString().ToLower());
     }
 }
 
