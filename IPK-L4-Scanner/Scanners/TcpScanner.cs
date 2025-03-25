@@ -28,6 +28,7 @@ public class TcpScanner : BaseScanner
     {
         var tcpHeader = packet as TcpPacket;
         if (tcpHeader is null) { throw new NullReferenceException("Received packet is not a TCP packet. Wrong packets should not be returned from GetPacketFromBytes");};
+
         if (tcpHeader.IsReset())
         {
             return new ScanResult(tcpHeader.SourcePort, PortState.Closed);
@@ -63,6 +64,11 @@ public class TcpScanner : BaseScanner
         if (!this.GetScannedPortsCollection().Contains(tcpHeader.SourcePort))
         {
             return null;
+        }
+
+        if (tcpHeader.IsSyn())
+        {
+            return null;    
         }
         
 

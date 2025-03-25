@@ -152,6 +152,11 @@ public class TcpPacket : Packet
         return new TcpPacket(null, null, sourcePort, destinationPort, flags);
     }
 
+    public bool IsSyn()
+    {
+        return Flags.HasFlag(TcpFlags.SYN);
+    }
+
     public bool IsAck()
     {
         return Flags.HasFlag(TcpFlags.ACK);
