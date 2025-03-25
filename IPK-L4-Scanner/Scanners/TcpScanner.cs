@@ -66,7 +66,7 @@ public class TcpScanner : BaseScanner
             return null;
         }
 
-        if (tcpHeader.IsSyn())
+        if (tcpHeader.IsSyn() && !(tcpHeader.IsAck() || tcpHeader.IsReset()))
         {
             return null;    
         }

@@ -8,7 +8,7 @@ namespace IPK_L4_Scanner;
 
 public abstract class BaseScanner : IDisposable
 {
-    protected const int SOURCE_PORT = 258;
+    protected const int SOURCE_PORT = 44358;
     protected static byte[] receiveBuffer = new byte[256];
 
     protected Socket? sendingSocket = null;
