@@ -45,6 +45,12 @@ public class UdpScanner : BaseScanner
             if (remoteEndPoint == null)
                 return null;
 
+
+            if (!remoteEndPoint.Address.Equals(destinationIp))
+            {
+                return null;
+            }
+
             IcmpPacket? icmpPacket = IcmpPacket.FromBytes(responseBytes, remoteEndPoint.Address, this.sourceEndPoint.Address);
             var udpPacket = icmpPacket?.GetOriginalUdpPacket();
 
@@ -54,10 +60,16 @@ public class UdpScanner : BaseScanner
                 return null;
             }
 
-            if (icmpPacket == null || icmpPacket.Code != 3 || icmpPacket.Type != 3)            
+            if (icmpPacket == null)
             {
-                remoteEndPoint = null;
                 return null;
+            }
+
+            //Accept type 3, code 3 and type 1,code 4 responses.
+            if (!((icmpPacket.Code == 3 && icmpPacket.Type == 3) || (icmpPacket.Code == 4 && icmpPacket.Type == 1)))            
+            {
+                    remoteEndPoint = null;
+                    return null;
             }
 
             remoteEndPoint = new IPEndPoint(remoteEndPoint.Address, udpPacket.DestinationPort);
@@ -73,7 +85,7 @@ public class UdpScanner : BaseScanner
         if (udpPacket == null)
             throw new NullReferenceException("UdpPacket cannot be null. If an ICMP packet has no copy of UDP packet, it should not pass through GetPacketFromBytes.");
 
-        if (icmpPacket.Type == 3)
+        if ((icmpPacket.Type == 3 && icmpPacket.Code == 3) || (icmpPacket.Type == 1 && icmpPacket.Code == 4))
         {
             return new ScanResult(udpPacket.DestinationPort, PortState.Closed);
         }

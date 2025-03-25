@@ -105,7 +105,7 @@ public class UdpPacket : Packet
             return null;
         }
         
-        int udpHeaderOffset = (sourceIp.AddressFamily == AddressFamily.InterNetwork) ? (packet[0] & 0x0F) * 4 : 0;
+        int udpHeaderOffset = (sourceIp.AddressFamily == AddressFamily.InterNetwork) ? Packet.DEFAULT_IPv4_Length : Packet.DEFAULT_IPv6_Length;
         ushort sourcePort = (ushort)((packet[udpHeaderOffset] << 8) | packet[udpHeaderOffset + 1]);
         ushort destinationPort = (ushort)((packet[udpHeaderOffset + 2] << 8) | packet[udpHeaderOffset + 3]);
 
