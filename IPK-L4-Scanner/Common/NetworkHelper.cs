@@ -6,12 +6,10 @@ namespace IPK_L4_Scanner;
 
 
 public class NetworkHelper {
-    public NetworkInterface[] GetAllNetworkInterfaces() => NetworkInterface.GetAllNetworkInterfaces();   
 
-    public IPAddress? GetIpOfInterface(string interfaceName, AddressFamily addressFamily, bool linkLocal)
+    public static IPAddress? GetIpOfInterface(string interfaceName, AddressFamily addressFamily, bool linkLocal)
     {
-        var networkInterfaces = GetAllNetworkInterfaces();
-        return networkInterfaces
+        return NetworkInterface.GetAllNetworkInterfaces()
         .Where(i => i.Name == interfaceName)
         .SelectMany(i => i.GetIPProperties().UnicastAddresses)
         .Select(a => a.Address)

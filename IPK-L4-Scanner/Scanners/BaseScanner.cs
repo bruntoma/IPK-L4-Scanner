@@ -28,8 +28,6 @@ public abstract class BaseScanner : IDisposable
 
     public Stopwatch stopwatch = Stopwatch.StartNew();
 
-    public NetworkHelper NetworkHelper { get; init; } = new NetworkHelper();
-
     protected BaseScanner(string interfaceName, IPAddress destinationIp, IPacketFactory headerFactory, int timeout)
     {
         parallelScansSemaphore = new SemaphoreSlim(MAX_PARALLEL_SCANS);
