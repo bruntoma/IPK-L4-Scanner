@@ -22,7 +22,7 @@ public abstract class BaseScanner : IDisposable
     private CancellationTokenSource? listeningTcs = null;
 
     public delegate void ScanFinishedHandler(IPAddress target, ScanResult result);
-    public event ScanFinishedHandler ScanFinished;
+    public event ScanFinishedHandler? ScanFinished;
     private SemaphoreSlim parallelScansSemaphore;
     private const int MAX_PARALLEL_SCANS = 15;
 
