@@ -2,12 +2,18 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.InteropServices;
 using IPK_L4_Scanner.Packets;
 
 namespace IPK_L4_Scanner;
 
 public abstract class BaseScanner : IDisposable
 {
+    [DllImport("libc", SetLastError = true)]
+    protected static extern int setsockopt(int socket, int level, int optname, byte[] optval, int optlen);
+
+
+
     protected const int SOURCE_PORT = 44358;
     protected static byte[] receiveBuffer = new byte[256];
 
@@ -28,15 +34,18 @@ public abstract class BaseScanner : IDisposable
 
     public Stopwatch stopwatch = Stopwatch.StartNew();
 
+    protected string interfaceName;
+
     protected BaseScanner(string interfaceName, IPAddress destinationIp, IPacketFactory headerFactory, int timeout)
     {
         parallelScansSemaphore = new SemaphoreSlim(MAX_PARALLEL_SCANS);
         var ip = NetworkHelper.GetIpOfInterface(interfaceName, destinationIp.AddressFamily, destinationIp.IsIPv6LinkLocal) ?? throw new Exception($"Could not find IPAddress of selected network interface ({interfaceName})");
         this.sourceEndPoint = new IPEndPoint(ip, SOURCE_PORT);
-
+        
         this.destinationIp = destinationIp;
         this.packetFactory = headerFactory;
         this.timeout = timeout;
+        this.interfaceName = interfaceName;
     }
 
     public void CreateSockets(){

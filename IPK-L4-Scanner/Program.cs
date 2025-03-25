@@ -89,7 +89,7 @@ class Program
             var tasks = new List<Task>();
             foreach (var port in ports)
             {
-                tasks.Add(scanner.StartPortScanAsync(port).ContinueWith(result => PrintScanResult(address, result.Result)));
+                tasks.Add(scanner.StartPortScanAsync(port).ContinueWith(result => PrintScanResult(address, result.Result, scannerType)));
             }
 
             await Task.WhenAll(tasks);
@@ -131,9 +131,9 @@ class Program
         return ports.Distinct().OrderBy(p => p);
     }
 
-    public static void PrintScanResult(IPAddress target, ScanResult result)
+    public static void PrintScanResult(IPAddress target, ScanResult result, ScannerType scannerType)
     {
-        Console.WriteLine(target + " " + result.Port + " " + result.PortState.ToString().ToLower());
+        Console.WriteLine($"{target} {result.Port} {scannerType.ToString().ToLower()} {result.PortState.ToString().ToLower()}");
     }
 }
 
