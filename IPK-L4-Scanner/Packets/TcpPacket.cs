@@ -25,7 +25,23 @@ public class TcpPacket : Packet
     public IPAddress? SourceIp {get; private set; }
     public IPAddress? DestinationIp {get; private set; }
 
-    public TcpFlags Flags {get; private set;} = 0;
+    private TcpFlags flags = 0; 
+    public TcpFlags Flags {
+        get{
+            return flags;
+        }
+        
+         set { 
+            if (flags == value) { return; }
+
+            flags = value;
+            if (Bytes != null)
+            {
+                this.Bytes[13] = (byte)flags;
+                UpdateChecksum();
+            }
+        }
+    }
 
 
     public TcpPacket(IPAddress? sourceIp, IPAddress? destinationIp, ushort sourcePort, ushort destinationPort, TcpFlags flags = 0) : base(Packet.DEFAULT_TCP_Length)
@@ -34,7 +50,7 @@ public class TcpPacket : Packet
         this.DestinationIp = destinationIp;
         this.SourcePort = sourcePort;
         this.DestinationPort = destinationPort;
-        this.Flags = flags;
+        this.flags = flags;
 
         this.Bytes = new byte[Packet.DEFAULT_TCP_Length];
 
@@ -73,9 +89,16 @@ public class TcpPacket : Packet
         this.Bytes[18] = 0x00; 
         this.Bytes[19] = 0x00;
 
+        UpdateChecksum();
+    }
 
+    private void UpdateChecksum()
+    {
         if (SourceIp != null && DestinationIp != null)
         {
+            this.Bytes[16] = 0;
+            this.Bytes[17] = 0;
+
             // Calculate checksum.
             byte[] pseudoHeader = CreatePseudoHeader(SourceIp, DestinationIp, 20);
             byte[] checksumData = new byte[pseudoHeader.Length + this.Bytes.Length];

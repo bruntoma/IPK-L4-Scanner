@@ -4,9 +4,9 @@ using IPK_L4_Scanner.Packets;
 
 namespace IPK_L4_Scanner;
 
-class UdpPacketFactory : IPacketFactory
+class UdpPacketFactory : IPacketFactory<UdpPacket>
 {
-    public byte[] CreatePacket(IPEndPoint sourceEndPoint, IPEndPoint destinationEndPoint)
+    public UdpPacket CreatePacket(IPEndPoint sourceEndPoint, IPEndPoint destinationEndPoint)
     {        
         var udpHeader = new UdpPacket(sourceEndPoint.Address, destinationEndPoint.Address, (ushort)sourceEndPoint.Port, (ushort)destinationEndPoint.Port);
         if (udpHeader.Bytes == null)  
@@ -14,6 +14,6 @@ class UdpPacketFactory : IPacketFactory
             throw new Exception("Packet creation failed"); 
         }
         
-        return udpHeader.Bytes;
+        return udpHeader;
     }
 }

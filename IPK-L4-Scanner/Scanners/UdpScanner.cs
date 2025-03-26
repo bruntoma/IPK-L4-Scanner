@@ -92,10 +92,10 @@ public class UdpScanner : BaseScanner
         return new ScanResult(udpPacket.DestinationPort, PortState.Open);
     }
 
-    protected override Task<ScanResult> HandleTimeout(int port, bool retry)
+    protected override async Task<ScanResult> HandleTimeout(int port, bool retry)
     {
         var result = new ScanResult(port, PortState.Open);
-        SetScanResult(result);
-        return Task.FromResult<ScanResult>(result);
+        await SetScanResult(result);
+        return result;
     }
 }

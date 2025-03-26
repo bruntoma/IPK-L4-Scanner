@@ -5,12 +5,13 @@ using IPK_L4_Scanner.Packets;
 
 public class TcpScanner : BaseScanner
 {
+    private TcpRstPacketFactory tcpRstPacketFactory = new();
 
-    public TcpScanner(string interfaceName, IPAddress destinationIp, int timeout = 5000) : base(interfaceName, destinationIp, new PacketFactory(), timeout)
+    public TcpScanner(string interfaceName, IPAddress destinationIp, int timeout = 5000) : base(interfaceName, destinationIp, new TcpSynPacketFactory(), timeout)
     {
         
     }
-
+    
     public override Socket CreateSendingSocket()
     {
         var sendingSocket = new Socket(destinationIp.AddressFamily, SocketType.Raw, ProtocolType.Tcp);
@@ -82,12 +83,18 @@ public class TcpScanner : BaseScanner
         if (retry)
         {
                 var result = new ScanResult(port, PortState.Filtered);
-                SetScanResult(result);
+                await SetScanResult(result);
                 return result;
         }
         else
         {
             return await StartPortScanAsync(port, true);
         }
+    }
+
+    protected override async Task SendLastPacket(ScanResult scanResult)
+    {
+        var rstPacket = tcpRstPacketFactory.CreatePacket(sourceEndPoint, new IPEndPoint(destinationIp, scanResult.Port));
+        await SendPacketToDestination(rstPacket);
     }
 }

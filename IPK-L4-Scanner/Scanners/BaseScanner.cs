@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using IPK_L4_Scanner.Packets;
 
@@ -9,12 +10,12 @@ namespace IPK_L4_Scanner;
 
 public abstract class BaseScanner : IDisposable
 {
-    protected const int SOURCE_PORT = 44358;
+    protected const int DEFAULT_SOURCE_PORT = 44358;
     protected static byte[] receiveBuffer = new byte[256];
 
     protected Socket? sendingSocket = null;
     protected Socket? receivingSocket = null;
-    protected IPacketFactory packetFactory;
+    protected IPacketFactory<Packet> packetFactory;
     protected IPEndPoint sourceEndPoint;
     protected IPAddress destinationIp;
     protected int timeout;
@@ -29,11 +30,18 @@ public abstract class BaseScanner : IDisposable
 
     public Stopwatch stopwatch = Stopwatch.StartNew();
 
-    protected BaseScanner(string interfaceName, IPAddress destinationIp, IPacketFactory headerFactory, int timeout)
+    protected BaseScanner(string interfaceName, IPAddress destinationIp, IPacketFactory<Packet> headerFactory, int timeout, int? sourcePort = 44358)
     {
         parallelScansSemaphore = new SemaphoreSlim(MAX_PARALLEL_SCANS);
         var ip = NetworkHelper.GetIpOfInterface(interfaceName, destinationIp.AddressFamily, destinationIp.IsIPv6LinkLocal) ?? throw new Exception($"Could not find IPAddress of selected network interface ({interfaceName})");
-        this.sourceEndPoint = new IPEndPoint(ip, GetRandomAvailablePort() ?? SOURCE_PORT);
+
+        //If no source port is specified, let OS choose.
+        if (sourcePort == null)
+        {
+            sourcePort = GetRandomAvailablePort();
+        }
+                
+        this.sourceEndPoint = new IPEndPoint(ip, sourcePort ?? DEFAULT_SOURCE_PORT);
 
         this.destinationIp = destinationIp;
         this.packetFactory = headerFactory;
@@ -57,7 +65,7 @@ public abstract class BaseScanner : IDisposable
         return taskSources.Keys;
     }
 
-    protected void SetScanResult(ScanResult result)
+    protected async Task SetScanResult(ScanResult result)
     {
         lock(taskSources[result.Port])
         {
@@ -67,6 +75,8 @@ public abstract class BaseScanner : IDisposable
                 ScanFinished?.Invoke(destinationIp, result);
             }
         }
+
+        await SendLastPacket(result);
     }
 
     public IEnumerable<Task<ScanResult>> GetScanningTasks()
@@ -81,7 +91,6 @@ public abstract class BaseScanner : IDisposable
           await parallelScansSemaphore.WaitAsync();
         }
 
-        if (sendingSocket is null || receivingSocket is null) throw new NullReferenceException("Sending socket cannot be null. Ensure CreateSockets() is called before ScanPort");
   
         try
         {
@@ -91,25 +100,38 @@ public abstract class BaseScanner : IDisposable
                 throw new Exception($"Creating tcs for port .{port}. failed");
             }
 
+
             var packet = packetFactory.CreatePacket(sourceEndPoint, new IPEndPoint(destinationIp, port));
-            await sendingSocket.SendToAsync(packet, new IPEndPoint(destinationIp, 0));
+            await SendPacketToDestination(packet);
+
 
             var completed = await Task.WhenAny(tcs.Task, Task.Delay(timeout));
             if (completed == tcs.Task)
             {
-                parallelScansSemaphore?.Release();
+                parallelScansSemaphore?.Release();                
                 return tcs.Task.Result;
             }
             else
             {
                 parallelScansSemaphore?.Release();
-                return await HandleTimeout(port, retry);
+                var result = await HandleTimeout(port, retry);
+                //await SendLastPacket(result);
+                return result;
             }
         }
         catch (Exception ex)
         {
             throw new Exception("Error during starting port scan.", ex);
         }
+    }
+
+    //Sends packet to destinationIp. The destination port is specified only in packet.
+    protected async Task SendPacketToDestination(Packet packet)
+    {
+        if (sendingSocket is null || receivingSocket is null) throw new NullReferenceException("Sending socket cannot be null. Ensure CreateSockets() is called before SendPacketToDestination()");
+        if (packet.Bytes == null) throw new NullReferenceException("Packet Bytes cannot be null when sending.");
+
+        await sendingSocket.SendToAsync(packet.Bytes, new IPEndPoint(destinationIp, 0));
     }
 
     public void StartListening()
@@ -121,7 +143,7 @@ public abstract class BaseScanner : IDisposable
             return;
 
 
-        Task.Factory.StartNew(() => {
+        Task.Factory.StartNew(async() => {
             while(!listeningTcs.IsCancellationRequested)
             {
                 try {
@@ -133,11 +155,11 @@ public abstract class BaseScanner : IDisposable
 
                     if ((packet is IcmpPacket || packet is TcpPacket) && ipEndPoint != null)
                     {
-                        lock (this.taskSources[ipEndPoint.Port])
-                        {
+                        //lock (this.taskSources[ipEndPoint.Port])
+                        //{
                             var result = GetScanResultFromResponse(packet);
-                            SetScanResult(result);
-                        }
+                            await SetScanResult(result);
+                        //}
                     }
                 }
                 catch (SocketException ex) when (
@@ -153,6 +175,12 @@ public abstract class BaseScanner : IDisposable
                 }
             }
         });
+    }
+
+    //Allows sending last packet after finishing scan (eg. TCP RST)
+    protected virtual Task SendLastPacket(ScanResult result)
+    {
+        return Task.CompletedTask;
     }
 
     protected abstract Task<ScanResult> HandleTimeout(int port, bool retry);

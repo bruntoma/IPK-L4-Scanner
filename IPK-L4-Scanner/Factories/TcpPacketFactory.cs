@@ -4,15 +4,15 @@ using IPK_L4_Scanner.Packets;
 
 namespace IPK_L4_Scanner;
 
-class PacketFactory : IPacketFactory
+class TcpPacketFactory : IPacketFactory<TcpPacket>
 {
-    public byte[] CreatePacket(IPEndPoint sourceEndPoint, IPEndPoint destinationEndPoint)
+    public virtual TcpPacket CreatePacket(IPEndPoint sourceEndPoint, IPEndPoint destinationEndPoint)
     {
-        var tcpHeader = new TcpPacket(sourceEndPoint.Address, destinationEndPoint.Address, (ushort)sourceEndPoint.Port, (ushort)destinationEndPoint.Port, TcpFlags.SYN);
+        var tcpHeader = new TcpPacket(sourceEndPoint.Address, destinationEndPoint.Address, (ushort)sourceEndPoint.Port, (ushort)destinationEndPoint.Port, 0);
         if (tcpHeader.Bytes == null) 
         { 
             throw new Exception("Packet creation failed"); 
         }
-        return tcpHeader.Bytes;
+        return tcpHeader;
     }
 }
