@@ -213,5 +213,7 @@ Pcap:
 
 ## Bibliografie
 [1] NETWORK WORKING GROUP. _Computing the Internet Checksum_. Online. 1988. Dostupné z: [https://datatracker.ietf.org/doc/html/rfc1071](https://datatracker.ietf.org/doc/html/rfc1071). [cit. 2025-03-26].
+
 [2] LYON, Gordon. _Nmap network scanning: official Nmap project guide to network discovery and security scanning_. Sunnyvale: Insecure, 2008. ISBN 978-0-9799587-1-7.
+
 [3]Port scanner_. Online. In: Wikipedia: the free encyclopedia. San Francisco (CA): Wikimedia Foundation, 2006. Dostupné z: [https://en.wikipedia.org/w/index.php?title=Port_scanner&oldid=1225200572](https://en.wikipedia.org/w/index.php?title=Port_scanner&oldid=1225200572). [cit. 2025-03-26].
