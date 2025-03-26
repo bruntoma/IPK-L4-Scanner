@@ -10,7 +10,8 @@ namespace IPK_L4_Scanner;
 
 public abstract class BaseScanner : IDisposable
 {
-    protected const int DEFAULT_SOURCE_PORT = 44358;
+    private const int DEFAULT_SOURCE_PORT = 44358;
+    private const int DEFAULT_MAX_PARALLEL_SCANS = 10;
     protected static byte[] receiveBuffer = new byte[256];
 
     protected Socket? sendingSocket = null;
@@ -25,23 +26,23 @@ public abstract class BaseScanner : IDisposable
 
     public delegate void ScanFinishedHandler(IPAddress target, ScanResult result);
     public event ScanFinishedHandler? ScanFinished;
-    private SemaphoreSlim parallelScansSemaphore;
-    private const int MAX_PARALLEL_SCANS = 15;
+    private SemaphoreSlim? parallelScansSemaphore;
 
     public Stopwatch stopwatch = Stopwatch.StartNew();
+    public int? MaxParellelScans { get; init; }
+    public int? SourcePort {get; init;}
 
-    protected BaseScanner(string interfaceName, IPAddress destinationIp, IPacketFactory<Packet> headerFactory, int timeout, int? sourcePort = 44358)
+    protected BaseScanner(string interfaceName, IPAddress destinationIp, IPacketFactory<Packet> headerFactory, int timeout)
     {
-        parallelScansSemaphore = new SemaphoreSlim(MAX_PARALLEL_SCANS);
         var ip = NetworkHelper.GetIpOfInterface(interfaceName, destinationIp.AddressFamily, destinationIp.IsIPv6LinkLocal) ?? throw new Exception($"Could not find IPAddress of selected network interface ({interfaceName})");
 
         //If no source port is specified, let OS choose.
-        if (sourcePort == null)
+        if (SourcePort == null)
         {
-            sourcePort = GetRandomAvailablePort();
+            SourcePort = GetRandomAvailablePort();
         }
                 
-        this.sourceEndPoint = new IPEndPoint(ip, sourcePort ?? DEFAULT_SOURCE_PORT);
+        this.sourceEndPoint = new IPEndPoint(ip, SourcePort ?? DEFAULT_SOURCE_PORT);
 
         this.destinationIp = destinationIp;
         this.packetFactory = headerFactory;
@@ -49,6 +50,7 @@ public abstract class BaseScanner : IDisposable
     }
 
     public void CreateSockets(){
+        parallelScansSemaphore = new SemaphoreSlim(MaxParellelScans ?? DEFAULT_MAX_PARALLEL_SCANS);
         this.sendingSocket = CreateSendingSocket();
 
         var endpoint = this.sendingSocket.LocalEndPoint as IPEndPoint;
@@ -92,9 +94,10 @@ public abstract class BaseScanner : IDisposable
 
     public virtual async Task<ScanResult> StartPortScanAsync(int port, bool retry = false)
     {
-        if (retry == false)
+        if (retry == false && parallelScansSemaphore != null)
         {
-          await parallelScansSemaphore.WaitAsync();
+            if (parallelScansSemaphore == null) throw new NullReferenceException("Parallel semaphore cannot be null. Ensure CreateSockets() is called before StartPortScanAsync()");
+            await parallelScansSemaphore.WaitAsync();
         }
 
   
@@ -134,7 +137,7 @@ public abstract class BaseScanner : IDisposable
     //Sends packet to destinationIp. The destination port is specified only in packet.
     protected async Task SendPacketToDestination(Packet packet)
     {
-        if (sendingSocket is null || receivingSocket is null) throw new NullReferenceException("Sending socket cannot be null. Ensure CreateSockets() is called before SendPacketToDestination()");
+        if (sendingSocket is null || receivingSocket is null) throw new NullReferenceException("Sending socket cannot be null. Ensure CreateSockets() is called before StartPortScanAsync()");
         if (packet.Bytes == null) throw new NullReferenceException("Packet Bytes cannot be null when sending.");
 
         await sendingSocket.SendToAsync(packet.Bytes, new IPEndPoint(destinationIp, 0));

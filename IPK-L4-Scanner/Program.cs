@@ -29,6 +29,12 @@ public class CommandLineOptions
     [Option('w', "wait", Required = false, Default = 5000, HelpText = "Timeout in milliseconds (default: 5000)")]
     public int Timeout { get; set; } = 5000;
 
+    [Option('s', Required = false, HelpText = "Source port to scan from. Random free port if will be chosen if not specified.")]
+    public int? SourcePort { get; set; }
+
+    [Option('x', Required = false, HelpText = "Maximum of port scans that can be run at the same time")]
+    public int? MaxParellelScans { get; set; }
+
     [Value(0, MetaName = "target", HelpText = "Hostname or IP address to scan")]
     public string? Target { get; set; }
 }
@@ -62,10 +68,10 @@ class Program
                     }
 
                     if (options.TcpPorts != null)
-                        await RunScan(options.Interface, options.Target, ParsePorts(options.TcpPorts), options.Timeout, ScannerType.Tcp);
+                        await RunScan(options, ParsePorts(options.TcpPorts), ScannerType.Tcp);
 
                     if (options.UdpPorts != null)
-                        await RunScan(options.Interface, options.Target, ParsePorts(options.UdpPorts), options.Timeout, ScannerType.Udp);
+                        await RunScan(options, ParsePorts(options.UdpPorts), ScannerType.Udp);
                 }
                 catch(Exception e)
                 {
@@ -76,13 +82,22 @@ class Program
         //fe80::da44:89ff:fe62:1ffc%enp0s3"
     }
 
-    public static async Task RunScan(string deviceName, string target, IEnumerable<int> ports, int timeout, ScannerType scannerType)
+    public static async Task RunScan(CommandLineOptions options, IEnumerable<int> ports, ScannerType scannerType)
     {
-        var addresses = await Dns.GetHostAddressesAsync(target);
+        var addresses = await Dns.GetHostAddressesAsync(options.Target!);
 
         foreach (var address in addresses)
         {
-            BaseScanner scanner = (scannerType == ScannerType.Tcp) ? new TcpScanner(deviceName, address, timeout) : new UdpScanner(deviceName, address, timeout);
+            BaseScanner scanner;
+            if (scannerType == ScannerType.Tcp)
+            {
+                scanner = new TcpScanner(options.Interface!, address, options.Timeout) { SourcePort = options.SourcePort, MaxParellelScans = options.MaxParellelScans};
+            }
+            else
+            {
+                scanner = new UdpScanner(options.Interface!, address, options.Timeout) { SourcePort = options.SourcePort, MaxParellelScans = options.MaxParellelScans};
+            }
+
             scanner.CreateSockets();
 
             var tasks = new List<Task>();
