@@ -29,4 +29,15 @@ public class NetworkHelper {
 
         return false;
     }
+
+
+    public static int? GetRandomAvailablePort()
+    {
+        Socket s = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+        s.Bind(new IPEndPoint(IPAddress.Any, 0));
+        var endpoint = s.LocalEndPoint as IPEndPoint;
+        int? port = endpoint?.Port;
+        s.Dispose();
+        return port;
+    }
 }

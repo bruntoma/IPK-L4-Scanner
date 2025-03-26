@@ -30,19 +30,19 @@ public abstract class BaseScanner : IDisposable
 
     public Stopwatch stopwatch = Stopwatch.StartNew();
     public int? MaxParellelScans { get; init; }
-    public int? SourcePort {get; init;}
 
-    protected BaseScanner(string interfaceName, IPAddress destinationIp, IPacketFactory<Packet> headerFactory, int timeout)
+    protected BaseScanner(string interfaceName, IPAddress destinationIp, IPacketFactory<Packet> headerFactory, int timeout, int? sourcePort)
     {
         var ip = NetworkHelper.GetIpOfInterface(interfaceName, destinationIp.AddressFamily, destinationIp.IsIPv6LinkLocal) ?? throw new Exception($"Could not find IPAddress of selected network interface ({interfaceName})");
 
+
         //If no source port is specified, let OS choose.
-        if (SourcePort == null)
+        if (sourcePort == null)
         {
-            SourcePort = GetRandomAvailablePort();
+            sourcePort = NetworkHelper.GetRandomAvailablePort();
         }
                 
-        this.sourceEndPoint = new IPEndPoint(ip, SourcePort ?? DEFAULT_SOURCE_PORT);
+        this.sourceEndPoint = new IPEndPoint(ip, sourcePort ?? DEFAULT_SOURCE_PORT);
 
         this.destinationIp = destinationIp;
         this.packetFactory = headerFactory;
@@ -203,13 +203,6 @@ public abstract class BaseScanner : IDisposable
         receivingSocket?.Dispose();
     }
 
-    private int? GetRandomAvailablePort()
-    {
-        Socket s = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-        s.Bind(new IPEndPoint(IPAddress.Any, 0));
-        var endpoint = s.LocalEndPoint as IPEndPoint;
-        return endpoint?.Port;
-    }
 
 
 }

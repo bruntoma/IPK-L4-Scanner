@@ -7,7 +7,7 @@ public class TcpScanner : BaseScanner
 {
     private TcpRstPacketFactory tcpRstPacketFactory = new();
 
-    public TcpScanner(string interfaceName, IPAddress destinationIp, int timeout = 5000) : base(interfaceName, destinationIp, new TcpSynPacketFactory(), timeout)
+    public TcpScanner(string interfaceName, IPAddress destinationIp, int timeout = 5000, int? sourcePort = null) : base(interfaceName, destinationIp, new TcpSynPacketFactory(), timeout, sourcePort)
     {
         
     }
@@ -95,7 +95,7 @@ public class TcpScanner : BaseScanner
 
     protected override async Task SendLastPacket(ScanResult scanResult)
     {
-        if (scanResult.PortState == PortState.Filtered) return; // don't send RST do filtered port
+        if (scanResult.PortState != PortState.Open) return; // Send RST only when port is open
 
         var rstPacket = tcpRstPacketFactory.CreatePacket(sourceEndPoint, new IPEndPoint(destinationIp, scanResult.Port));
         await SendPacketToDestination(rstPacket);

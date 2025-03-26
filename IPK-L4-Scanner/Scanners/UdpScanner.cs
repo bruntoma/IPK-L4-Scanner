@@ -7,7 +7,7 @@ public class UdpScanner : BaseScanner
 {
     private SemaphoreSlim rateLimitSemaphore = new(0);
 
-    public UdpScanner(string interfaceName, IPAddress destinationIp, int timeout = 5000, int packetsPerSecond = 1) : base(interfaceName, destinationIp, new UdpPacketFactory(), timeout)
+    public UdpScanner(string interfaceName, IPAddress destinationIp, int timeout = 5000, int? sourcePort = null, int packetsPerSecond = 1) : base(interfaceName, destinationIp, new UdpPacketFactory(), timeout, sourcePort)
     {
 
         int period = 1000 / packetsPerSecond;

@@ -29,7 +29,7 @@ public class CommandLineOptions
     [Option('w', "wait", Required = false, Default = 5000, HelpText = "Timeout in milliseconds (default: 5000)")]
     public int Timeout { get; set; } = 5000;
 
-    [Option('s', Required = false, HelpText = "Source port to scan from. Random free port if will be chosen if not specified.")]
+    [Option('s', Required = false, HelpText = "Source port to scan from. Random free port will be chosen if not specified.")]
     public int? SourcePort { get; set; }
 
     [Option('x', Required = false, HelpText = "Maximum of port scans that can be run at the same time")]
@@ -91,11 +91,11 @@ class Program
             BaseScanner scanner;
             if (scannerType == ScannerType.Tcp)
             {
-                scanner = new TcpScanner(options.Interface!, address, options.Timeout) { SourcePort = options.SourcePort, MaxParellelScans = options.MaxParellelScans};
+                scanner = new TcpScanner(options.Interface!, address, options.Timeout, options.SourcePort) { MaxParellelScans = options.MaxParellelScans};
             }
             else
             {
-                scanner = new UdpScanner(options.Interface!, address, options.Timeout) { SourcePort = options.SourcePort, MaxParellelScans = options.MaxParellelScans};
+                scanner = new UdpScanner(options.Interface!, address, options.Timeout, options.SourcePort) { MaxParellelScans = options.MaxParellelScans};
             }
 
             scanner.CreateSockets();
