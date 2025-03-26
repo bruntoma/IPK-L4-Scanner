@@ -180,18 +180,18 @@ enp0s3
 ```
 #### 3.  TCP sken `scanme.nmap.org`
 - Příkaz: `./ipk-l4-scan -i enp0s3 scanme.nmap.org -t 0-50 -s 45356`
-- Výstup: [txt soubor](https://github.com/bruntoma/IPK-L4-Scanner/blob/work/Docs/outputs/scanmeSimpleTcp0_50.txt)
-- Pcap: [pcap soubor](https://github.com/bruntoma/IPK-L4-Scanner/blob/work/Docs/pcaps/scanmeSimpleTcp0_50.pcap)
+- Výstup: [txt soubor](https://git.fit.vutbr.cz/xbrunat00/IPK2025-L4Scanner-Omega/src/branch/work/Docs/outputs/scanmeSimpleTcp0_50.txt)
+- Pcap: [pcap soubor](https://git.fit.vutbr.cz/xbrunat00/IPK2025-L4Scanner-Omega/src/branch/work/Docs/pcaps/scanmeSimpleTcp0_50.pcap)
 
 #### 4.  UDP sken `scanme.nmap.org`
 - Příkaz: `./ipk-l4-scan -i enp0s3 scanme.nmap.org -u 50-55 -s 45356`
-- Výstup: [txt soubor](https://github.com/bruntoma/IPK-L4-Scanner/blob/work/Docs/outputs/scanmeSimpleUdp50_55.txt)
-- Pcap: [pcap soubor](https://github.com/bruntoma/IPK-L4-Scanner/blob/work/Docs/pcaps/scanmeSimpleUdp50_55.pcap)
+- Výstup: [txt soubor](https://git.fit.vutbr.cz/xbrunat00/IPK2025-L4Scanner-Omega/src/branch/work/Docs/outputs/scanmeSimpleUdp50_55.txt)
+- Pcap: [pcap soubor](https://git.fit.vutbr.cz/xbrunat00/IPK2025-L4Scanner-Omega/src/branch/work/Docs/pcaps/scanmeSimpleUdp50_55.pcap)
 
 #### 5. TCP a UDP sken `localhost` - všechny porty zavřené
 - Příkaz: `./ipk-l4-scan -i lo -t 22,53,420-450 -u 50-55,60 -s 45356 localhost`
-- Výstup: [txt soubor](https://github.com/bruntoma/IPK-L4-Scanner/blob/work/Docs/outputs/localhostCombined3.txt)
-- Pcap: [pcap soubor](https://github.com/bruntoma/IPK-L4-Scanner/blob/work/Docs/pcaps/localhostCombined3.pcap)
+- Výstup: [txt soubor](https://git.fit.vutbr.cz/xbrunat00/IPK2025-L4Scanner-Omega/src/branch/work/Docs/outputs/localhostCombined3.txt)
+- Pcap: [pcap soubor](https://git.fit.vutbr.cz/xbrunat00/IPK2025-L4Scanner-Omega/src/branch/work/Docs/pcaps/localhostCombined3.pcap)
 
 #### 6. TCP a UDP sken `localhost` all closed
 - Před testem:
@@ -201,8 +201,8 @@ netcat -lk 22
 ```
 
 - Příkaz: `./ipk-l4-scan -i lo -t 22-25 -u 20-25 -s 45356 localhost`
-- Výstup: [txt soubor](https://github.com/bruntoma/IPK-L4-Scanner/blob/work/Docs/outputs/localhostOpenWithNetcat.txt)
-- Pcap: [pcap soubor](https://github.com/bruntoma/IPK-L4-Scanner/blob/work/Docs/pcaps/localhostOpenWithNetcat.pcap)
+- Výstup: [txt soubor](https://git.fit.vutbr.cz/xbrunat00/IPK2025-L4Scanner-Omega/src/branch/work/Docs/outputs/localhostOpenWithNetcat.txt)
+- Pcap: [pcap soubor](https://git.fit.vutbr.cz/xbrunat00/IPK2025-L4Scanner-Omega/src/branch/work/Docs/pcaps/localhostOpenWithNetcat.pcap)
 
 ## Známá omezení a poznámky
 * V zadání je řečeno, že při UDP skenování se má považovat port za zavřený, pokud dorazí ICMP zpráva typu 3, s kódem 3. V ICMPv6 `port unreachable` signalizuje zpráva s typem 1 a kódem 4. Usoudil jsem, že se jedná o chybu v zadání - skener tedy po obdržení ICMPv6 typu 1, s kódem 4 prohlásí port za zavřený.
