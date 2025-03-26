@@ -52,8 +52,6 @@ public class TcpPacket : Packet
         this.DestinationPort = destinationPort;
         this.flags = flags;
 
-        this.Bytes = new byte[Packet.DEFAULT_TCP_Length];
-
         this.Bytes[0] = (byte)(sourcePort >> 8);
         this.Bytes[1] = (byte)(sourcePort & 0xFF);
         this.Bytes[2] = (byte)(destinationPort >> 8);

@@ -15,11 +15,12 @@ public abstract class Packet {
     
 
     public byte Length {get; init;}
-    public byte[]? Bytes { get; protected set; }  
+    public byte[] Bytes { get; protected set; }  
 
     public Packet(byte length)
     {
         this.Length = length;
+        this.Bytes = new byte[length];
     }
 
     public ushort CalculateChecksum(byte[] buffer, int offset, int length)
