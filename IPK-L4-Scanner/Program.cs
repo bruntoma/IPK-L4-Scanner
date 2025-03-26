@@ -38,7 +38,6 @@ class Program
 
     static async Task Main(string[] args)
     {
-
         await Parser.Default.ParseArguments<CommandLineOptions>(args)
             .WithParsedAsync(async options =>
             {
@@ -70,7 +69,7 @@ class Program
                 }
                 catch(Exception e)
                 {
-                    System.Console.WriteLine(e.Message);
+                    System.Console.WriteLine("An error occured: " + e.Message);
                 }
             });
 

@@ -29,7 +29,7 @@ public class UdpScanner : BaseScanner
     public override Socket CreateReceivingSocket()
     {
         var protocolType = (destinationIp.AddressFamily == AddressFamily.InterNetwork) ? ProtocolType.Icmp : ProtocolType.IcmpV6;
-        var receivingSocket = new Socket(destinationIp.AddressFamily, SocketType.Raw, protocolType) { ReceiveTimeout = timeout};
+        var receivingSocket = new Socket(destinationIp.AddressFamily, SocketType.Raw, protocolType);
         receivingSocket.Bind(new IPEndPoint(sourceEndPoint.Address, 0));
         return receivingSocket;
     } 

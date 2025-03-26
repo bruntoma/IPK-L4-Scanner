@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading.Tasks;
 using IPK_L4_Scanner.Packets;
 
 namespace IPK_L4_Scanner;
@@ -32,7 +33,7 @@ public abstract class BaseScanner : IDisposable
     {
         parallelScansSemaphore = new SemaphoreSlim(MAX_PARALLEL_SCANS);
         var ip = NetworkHelper.GetIpOfInterface(interfaceName, destinationIp.AddressFamily, destinationIp.IsIPv6LinkLocal) ?? throw new Exception($"Could not find IPAddress of selected network interface ({interfaceName})");
-        this.sourceEndPoint = new IPEndPoint(ip, SOURCE_PORT);
+        this.sourceEndPoint = new IPEndPoint(ip, GetRandomAvailablePort() ?? SOURCE_PORT);
 
         this.destinationIp = destinationIp;
         this.packetFactory = headerFactory;
@@ -42,7 +43,6 @@ public abstract class BaseScanner : IDisposable
     public void CreateSockets(){
         this.sendingSocket = CreateSendingSocket();
         this.receivingSocket = CreateReceivingSocket();
-
         StartListening();
     }
 
@@ -114,7 +114,6 @@ public abstract class BaseScanner : IDisposable
 
     public void StartListening()
     {   
-
         listeningTcs = new CancellationTokenSource();
 
         byte[] buffer = new byte[256];
@@ -122,7 +121,7 @@ public abstract class BaseScanner : IDisposable
             return;
 
 
-        new Task(async () => {
+        Task.Factory.StartNew(() => {
             while(!listeningTcs.IsCancellationRequested)
             {
                 try {
@@ -148,8 +147,12 @@ public abstract class BaseScanner : IDisposable
                 {
                     break;
                 }
+                catch(Exception ex)
+                {
+                    System.Console.WriteLine("Exception occured: " + ex.Message);
+                }
             }
-        }, listeningTcs.Token).Start();
+        });
     }
 
     protected abstract Task<ScanResult> HandleTimeout(int port, bool retry);
@@ -162,4 +165,14 @@ public abstract class BaseScanner : IDisposable
         sendingSocket?.Dispose();
         receivingSocket?.Dispose();
     }
+
+    private int? GetRandomAvailablePort()
+    {
+        Socket s = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+        s.Bind(new IPEndPoint(IPAddress.Any, 0));
+        var endpoint = s.LocalEndPoint as IPEndPoint;
+        return endpoint?.Port;
+    }
+
+
 }
