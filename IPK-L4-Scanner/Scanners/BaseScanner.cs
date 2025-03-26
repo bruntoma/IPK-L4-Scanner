@@ -67,16 +67,17 @@ public abstract class BaseScanner : IDisposable
 
     protected async Task SetScanResult(ScanResult result)
     {
-        lock(taskSources[result.Port])
+        if (!taskSources[result.Port].Task.IsCompleted)
         {
-            if (!taskSources[result.Port].Task.IsCompleted)
+            lock(taskSources[result.Port])
             {
-                taskSources[result.Port].SetResult(result);
-                ScanFinished?.Invoke(destinationIp, result);
+                
+                    taskSources[result.Port].SetResult(result);
+                    ScanFinished?.Invoke(destinationIp, result);
             }
-        }
 
-        await SendLastPacket(result);
+            await SendLastPacket(result);
+        }
     }
 
     public IEnumerable<Task<ScanResult>> GetScanningTasks()

@@ -94,6 +94,8 @@ public class TcpScanner : BaseScanner
 
     protected override async Task SendLastPacket(ScanResult scanResult)
     {
+        if (scanResult.PortState == PortState.Filtered) return; // don't send RST do filtered port
+
         var rstPacket = tcpRstPacketFactory.CreatePacket(sourceEndPoint, new IPEndPoint(destinationIp, scanResult.Port));
         await SendPacketToDestination(rstPacket);
     }
