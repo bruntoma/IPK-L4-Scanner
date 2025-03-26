@@ -50,6 +50,11 @@ public abstract class BaseScanner : IDisposable
 
     public void CreateSockets(){
         this.sendingSocket = CreateSendingSocket();
+
+        var endpoint = this.sendingSocket.LocalEndPoint as IPEndPoint;
+        if (endpoint != null)
+            this.sourceEndPoint = new IPEndPoint(endpoint.Address, sourceEndPoint.Port);
+        
         this.receivingSocket = CreateReceivingSocket();
         StartListening();
     }

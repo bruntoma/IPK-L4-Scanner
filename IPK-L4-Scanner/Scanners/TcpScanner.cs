@@ -15,6 +15,7 @@ public class TcpScanner : BaseScanner
     public override Socket CreateSendingSocket()
     {
         var sendingSocket = new Socket(destinationIp.AddressFamily, SocketType.Raw, ProtocolType.Tcp);
+        sendingSocket.Bind(new IPEndPoint(sourceEndPoint.Address, 0)); // Binding just to make socket fetch LocalEnpoint
         return sendingSocket;
     }
 
