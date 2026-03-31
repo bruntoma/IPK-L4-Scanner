@@ -36,8 +36,9 @@ Tato dokumentace obsahuje popis řešení projektu, jehož cílem bylo vytvořit
 | `-s source-port`                        | Specifikuje který port se použije pro odesílání. Pokud chybí, použije se náhodný volný port.                                        |
 | `-w timeout`, `--wait timeout`          | Timeout v milisekundách pro čekání na odpověď (výchozí hodnota je 5000)                                                             |
 | `hostname` nebo `ip-address`            | Cíl - doménové jméno nebo IPv4/IPv6 adresa                                                                                          |
+
 Na pořadí argumentů nezáleží.
-Porty mohou být zadány následujícími způsoby
+Porty mohou být zadány následujícími způsoby:
 - Jednotlivý port: `22`
 - Rozsah portů: `1-65535`
 - Seznam portů: `22,23,24`
