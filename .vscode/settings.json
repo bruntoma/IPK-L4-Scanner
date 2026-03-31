@@ -1,0 +1,19 @@
+{
+    "files.exclude": {
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.hg": true,
+        "**/CVS": true,
+        "**/.DS_Store": true,
+        "**/Thumbs.db": true,
+        "IPK-L4-Scanner/obj": true,
+        "**/obj": true,
+        "obj": true,
+        "IPK-L4-Scanner.Tests/bin": true,
+        "**/bin": true,
+        "bin": true,
+        "**/~": true,
+        "~": true,
+    },
+    "explorerExclude.backup": {}
+}

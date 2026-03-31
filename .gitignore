@@ -6,6 +6,10 @@
 # dotenv files
 .env
 
+ipk-l4-scan
+.pdb
+.dll
+
 # User-specific files
 *.rsuser
 *.suo
